@@ -64,6 +64,18 @@ size One = 1
 size X = 1
 size Y = 1
 size Z = 1
+size (If0 a b c) = 1 + size a + size b + size c
+size (Fold a b c) = 2 + size a + size b + size c
+size (Not e) = 1 + size e
+size (Shl1 e) = 1 + size e
+size (Shr1 e) = 1 + size e
+size (Shr4 e) = 1 + size e
+size (Shr16 e) = 1 + size e
+size (And a b) = 1 + size a + size b
+size (Or a b) = 1 + size a + size b
+size (Xor a b) = 1 + size a + size b
+size (Plus a b) = 1 + size a + size b
+
 
 -- enumerate (requires a size and TWO OperatorSets (definitely and maybe))
 
