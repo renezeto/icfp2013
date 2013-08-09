@@ -114,7 +114,9 @@ enumerate 3 musthave mayhave
             unaries = filter (overlapsWith ops_unary) $ distinctOperators mayhave
             unary_asts myop = apply_single_unary myop (enumerate 2 musthave mayhave)
 
-enumerate n musthave mayhave = fold_asts ++ if_asts ++ (concatMap binary_asts binaries) ++ (concatMap unary_asts unaries)
+enumerate n musthave mayhave
+  | minimum_size musthave > n = []
+  | otherwise = fold_asts ++ if_asts ++ (concatMap binary_asts binaries) ++ (concatMap unary_asts unaries)
   where fold_asts = if mayhave `overlapsWith` op_fold then
                       concat [apply_fold (enumerate i fold_musthave fold_mayhave)
                                          (enumerate j fold_musthave fold_mayhave)
@@ -137,6 +139,19 @@ enumerate n musthave mayhave = fold_asts ++ if_asts ++ (concatMap binary_asts bi
         unaries = filter (overlapsWith ops_unary) $ distinctOperators mayhave
         unary_asts myop = apply_single_unary myop (enumerate (n-1) (musthave `difference` myop) mayhave)
 
+
+minimum_size :: OperatorSet -> Int
+minimum_size o = 1 + (fromEnum $ o `overlapsWith` op_not)
+                 + (fromEnum $ o `overlapsWith` op_shl1)
+                 + (fromEnum $ o `overlapsWith` op_shr1)
+                 + (fromEnum $ o `overlapsWith` op_shr4)
+                 +(fromEnum $ o `overlapsWith` op_shr16)
+                 + 2*((fromEnum $ o `overlapsWith` op_plus)
+                      + (fromEnum $ o `overlapsWith` op_or)
+                      + (fromEnum $ o `overlapsWith` op_xor)
+                      + (fromEnum $ o `overlapsWith` op_and))
+                 + 3*(fromEnum $ o `overlapsWith` op_if)
+                 + 4*(fromEnum $ o `overlapsWith` op_fold)
 
 apply_if :: [Ast] -> [Ast] -> [Ast] -> [Ast]
 apply_if xs ys zs = [If0 a b c | a <- xs, b <- ys, c <- zs]
