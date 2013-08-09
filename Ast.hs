@@ -169,6 +169,11 @@ apply_single_unary o xs
   | o == op_shr16 = map Shr16 xs
   | otherwise = []
 
+-- OperatorSet from Ast
+
+find_ast_ops :: Ast -> OperatorSet
+find_ast_ops _ = undefined
+
 -- lisp output
 
 
