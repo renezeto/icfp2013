@@ -67,11 +67,58 @@ size Z = 1
 
 -- enumerate (requires a size and TWO OperatorSets (definitely and maybe))
 
+enumerate :: Int -> OperatorSet -> OperatorSet -> [Ast]
+enumerate 1 _ mayhave | mayhave `overlapsWith` op_yz = [Zero, One, X, Y, Z]
+                      | otherwise = [Zero, One, X]
+enumerate 2 musthave mayhave
+  | musthave `overlapsWith` ops_binary_trinary = []
+  | musthave `overlapsWith` ops_unary =
+    case distinctOperators $ intersection musthave ops_unary of
+        [myop] -> apply_single_unary myop (enumerate 1 (musthave `difference` myop) mayhave)
+        _ -> []
+  | otherwise = concatMap thingsfor unaries
+      where unaries = filter (overlapsWith ops_unary) $ distinctOperators mayhave
+            thingsfor myop = apply_single_unary myop (enumerate 1 (musthave `difference` myop) mayhave)
+enumerate 3 musthave mayhave
+  | musthave `overlapsWith` ops_trinary = []
+  | musthave `overlapsWith` ops_binary && musthave `overlapsWith` ops_unary = []
+  | musthave `overlapsWith` ops_binary =
+    case distinctOperators $ intersection musthave ops_binary of
+        [myop] -> apply_single_binary myop (enumerate 1 (musthave `difference` myop) mayhave)
+        _ -> []
+  | otherwise = concatMap thingsfor binaries -- ++ similar with unaries here
+      where binaries = filter (overlapsWith ops_binary) $ distinctOperators mayhave
+            thingsfor myop = apply_single_unary myop (enumerate 1 (musthave `difference` myop) mayhave)
+
+apply_single_binary :: OperatorSet -> [Ast] -> [Ast]
+apply_single_binary o xs
+  | o == op_plus = [Plus a b | a <- xs, b <- xs]
+  | o == op_or = [Or a b | a <- xs, b <- xs]
+  | o == op_xor = [Xor a b | a <- xs, b <- xs]
+  | o == op_and = [And a b | a <- xs, b <- xs]
+  | otherwise = []
+
+apply_single_unary :: OperatorSet -> [Ast] -> [Ast]
+apply_single_unary o xs
+  | o == op_not = map Not xs
+  | o == op_shl1 = map Shl1 xs
+  | o == op_shr1 = map Shr1 xs
+  | o == op_shr4 = map Shr4 xs
+  | o == op_shr16 = map Shr16 xs
+  | otherwise = []
 
 -- lisp output
 
 
 -- OperatorSet code:
+
+ops_trinary = OS (1 + 2)
+ops_binary = OS (128 + 256 + 512 + 1024)
+ops_unary = OS (4 + 8 + 16 + 32 + 64)
+
+ops_binary_trinary = OS (1 + 2 + 128 + 256 + 512 + 1024)
+
+ops_all = OS (1 + 2 + 4 + 8 + 16 + 32 + 64 + 128 + 256 + 512 + 1024)
 
 op_if = OS 1
 op_fold = OS 2
@@ -84,6 +131,7 @@ op_and = OS 128
 op_or = OS 256
 op_xor = OS 512
 op_plus = OS 1024
+op_yz = OS 2048
 
 allops = [(op_if, "if0"),
           (op_fold, "fold"),
@@ -95,18 +143,35 @@ allops = [(op_if, "if0"),
           (op_and, "and"),
           (op_or, "or"),
           (op_xor, "xor"),
-          (op_plus, "plus")]
+          (op_plus, "plus"),
+          (op_yz, "yz")]
+
+empty = OS 0
 
 -- union
 
 union :: OperatorSet -> OperatorSet -> OperatorSet
 union (OS a) (OS b) = OS (a .|. b)
 
+unions :: [OperatorSet] -> OperatorSet
+unions xs = OS $ foldl (.|.) 0 (map tow xs)
+  where tow (OS x) = x
+
 difference :: OperatorSet -> OperatorSet -> OperatorSet
 difference (OS a) (OS b) = OS (a .&. complement b)
 
 intersection :: OperatorSet -> OperatorSet -> OperatorSet
-intersection (OS a) (OS b) = OS (a `xor` b)
+intersection (OS a) (OS b) = OS (a .&. b)
+
+overlapsWith :: OperatorSet -> OperatorSet -> Bool
+a `overlapsWith` b = intersection a b /= empty
+
+distinctOperators :: OperatorSet -> [OperatorSet]
+distinctOperators (OS x) = dops 0 x
+  where dops :: Int -> Word16 -> [OperatorSet]
+        dops _ 0 = []
+        dops shiftby z | (z .&. 1) == 1 = OS (unsafeShiftL 1 shiftby) : dops (shiftby + 1) (unsafeShiftR z 1)
+                       | otherwise = dops (shiftby + 1) (unsafeShiftR z 1)
 
 instance Show OperatorSet where
     showsPrec _ (OS x) = showString $ unwords $ map snd $ filter ok allops
