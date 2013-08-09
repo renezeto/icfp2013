@@ -68,6 +68,8 @@ size Z = 1
 -- enumerate (requires a size and TWO OperatorSets (definitely and maybe))
 
 enumerate :: Int -> OperatorSet -> OperatorSet -> [Ast]
+enumerate n musthave maybe
+  | musthave `overlapsWith` op_tfold = error "add tfold here!"
 enumerate 1 _ mayhave | mayhave `overlapsWith` op_yz = [Zero, One, X, Y, Z]
                       | otherwise = [Zero, One, X]
 enumerate 2 musthave mayhave
