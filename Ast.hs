@@ -16,14 +16,14 @@ data Ast = Zero | One | X | Y | Z
          | Plus Ast Ast
          deriving ( Read, Show, Eq, Ord )
 
-data OperatorSet Ifop | Foldop | Notop | Shl1op | Shr1op
+data OperatorSet = Ifop | Foldop | Notop | Shl1op | Shr1op
               | Shr4op | Shr16op | Andop | Orop | Xorop | Plusop
 
 
 
 -- eval
 
-
+--eval :: Ast -> Word64 -> Word64
 
 -- size
 
