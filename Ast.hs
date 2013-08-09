@@ -132,6 +132,7 @@ op_or = OS 256
 op_xor = OS 512
 op_plus = OS 1024
 op_yz = OS 2048
+op_tfold = OS 4096
 
 allops = [(op_if, "if0"),
           (op_fold, "fold"),
@@ -144,6 +145,7 @@ allops = [(op_if, "if0"),
           (op_or, "or"),
           (op_xor, "xor"),
           (op_plus, "plus"),
+          (op_tfold, "tfold"),
           (op_yz, "yz")]
 
 empty = OS 0
