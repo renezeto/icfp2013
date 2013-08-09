@@ -82,10 +82,7 @@ size (Plus a b) = 1 + size a + size b
 enumerate :: Int -> OperatorSet -> OperatorSet -> [Ast]
 enumerate n musthave mayhave
   | musthave `overlapsWith` op_tfold  =
-    concat [apply_fold (enumerate i fold_musthave fold_mayhave)
-            (enumerate j fold_musthave fold_mayhave)
-            (enumerate (n-2-i-j) fold_musthave fold_mayhave)
-           | i <- [1..n-4], j <- [1..n-3-i]]
+    apply_fold [X] [Zero] (enumerate (n-4) fold_musthave fold_mayhave)
       where
         fold_musthave = musthave `difference` op_tfold
         fold_mayhave = mayhave `difference` op_tfold `union` op_yz
