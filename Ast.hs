@@ -1,5 +1,7 @@
 module Ast where
 
+import Data.Word ( Word64 )
+
 data Ast = Zero | One | X | Y | Z
          | If0 Ast Ast Ast
          | Fold Ast Ast Ast
@@ -14,8 +16,10 @@ data Ast = Zero | One | X | Y | Z
          | Plus Ast Ast
          deriving ( Read, Show, Eq, Ord )
 
-data Operator = Ifop | Foldop | Notop | Shl1op | Shr1op
+data OperatorSet Ifop | Foldop | Notop | Shl1op | Shr1op
               | Shr4op | Shr16op | Andop | Orop | Xorop | Plusop
+
+
 
 -- eval
 
@@ -25,4 +29,16 @@ data Operator = Ifop | Foldop | Notop | Shl1op | Shr1op
 
 
 
--- enumerate
+-- enumerate (requires a size and TWO OperatorSets (definitely and maybe))
+
+
+-- lisp output
+
+
+-- OperatorSet code:
+
+-- union
+
+-- difference
+
+-- add/remove, etc
