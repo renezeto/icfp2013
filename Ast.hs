@@ -80,8 +80,15 @@ size (Plus a b) = 1 + size a + size b
 -- enumerate (requires a size and TWO OperatorSets (definitely and maybe))
 
 enumerate :: Int -> OperatorSet -> OperatorSet -> [Ast]
-enumerate n musthave maybe
-  | musthave `overlapsWith` op_tfold = error "add tfold here!"
+enumerate n musthave mayhave
+  | musthave `overlapsWith` op_tfold  =
+    concat [apply_fold (enumerate i fold_musthave fold_mayhave)
+            (enumerate j fold_musthave fold_mayhave)
+            (enumerate (n-2-i-j) fold_musthave fold_mayhave)
+           | i <- [1..n-4], j <- [1..n-3-i]]
+      where
+        fold_musthave = musthave `difference` op_tfold
+        fold_mayhave = mayhave `difference` op_tfold `union` op_yz
 enumerate 1 _ mayhave | mayhave `overlapsWith` op_yz = [Zero, One, X, Y, Z]
                       | otherwise = [Zero, One, X]
 enumerate 2 musthave mayhave
