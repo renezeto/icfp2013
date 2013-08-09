@@ -100,9 +100,53 @@ enumerate 3 musthave mayhave
     case distinctOperators $ intersection musthave ops_binary of
         [myop] -> apply_single_binary myop (enumerate 1 (musthave `difference` myop) mayhave)
         _ -> []
-  | otherwise = concatMap thingsfor binaries -- ++ similar with unaries here
+  | musthave `overlapsWith` ops_unary =
+      case distinctOperators $ intersection musthave ops_unary of
+        [myop] -> apply_single_unary myop (enumerate 2 (musthave `difference` myop) mayhave)
+        _ -> []
+  | otherwise = (concatMap binary_asts binaries) ++ (concatMap unary_asts unaries)
       where binaries = filter (overlapsWith ops_binary) $ distinctOperators mayhave
-            thingsfor myop = apply_single_unary myop (enumerate 1 (musthave `difference` myop) mayhave)
+            binary_asts myop = apply_single_binary myop (enumerate 1 musthave mayhave)
+            unaries = filter (overlapsWith ops_unary) $ distinctOperators mayhave
+            unary_asts myop = apply_single_unary myop (enumerate 2 musthave mayhave)
+
+enumerate n musthave mayhave = fold_asts ++ if_asts ++ (concatMap binary_asts binaries) ++ (concatMap unary_asts unaries)
+  where fold_asts = if mayhave `overlapsWith` op_fold then
+                      concat [apply_fold (enumerate i fold_musthave fold_mayhave)
+                                         (enumerate j fold_musthave fold_mayhave)
+                                         (enumerate (n-2-i-j) fold_musthave fold_mayhave)
+                             | i <- [1..n-4], j <- [1..n-3-i]]
+                    else []
+        fold_musthave = musthave `difference` op_fold
+        fold_mayhave = mayhave `difference` op_fold `union` op_yz
+        if_asts = if mayhave `overlapsWith` op_if then
+                    concat [apply_if (enumerate i if_musthave mayhave)
+                                     (enumerate j if_musthave mayhave)
+                                     (enumerate (n-1-i-j) if_musthave mayhave)
+                           | i <- [1..n-3], j <- [1..n-2-i]]
+                  else []
+        if_musthave = musthave `difference` op_if
+        binaries = filter (overlapsWith ops_binary) $ distinctOperators mayhave
+        binary_asts myop = concat [apply_binary myop (enumerate i (musthave `difference` myop) mayhave)
+                                                     (enumerate (n-1-i) (musthave `difference` myop) mayhave)
+                                  | i <- [1..n-2]]
+        unaries = filter (overlapsWith ops_unary) $ distinctOperators mayhave
+        unary_asts myop = apply_single_unary myop (enumerate (n-1) (musthave `difference` myop) mayhave)
+
+
+apply_if :: [Ast] -> [Ast] -> [Ast] -> [Ast]
+apply_if xs ys zs = [If0 a b c | a <- xs, b <- ys, c <- zs]
+
+apply_fold :: [Ast] -> [Ast] -> [Ast] -> [Ast]
+apply_fold xs ys zs = [Fold a b c | a <- xs, b <- ys, c <- zs]
+
+apply_binary :: OperatorSet -> [Ast] -> [Ast] -> [Ast]
+apply_binary o xs ys
+  | o == op_plus = [Plus a b | a <- xs, b <- ys]
+  | o == op_or = [Or a b | a <- xs, b <- ys]
+  | o == op_xor = [Xor a b | a <- xs, b <- ys]
+  | o == op_and = [And a b | a <- xs, b <- ys]
+  | otherwise = []
 
 apply_single_binary :: OperatorSet -> [Ast] -> [Ast]
 apply_single_binary o xs
