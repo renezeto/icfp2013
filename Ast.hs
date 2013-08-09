@@ -252,4 +252,7 @@ toOperatorSet (x:xs) = xop `union` toOperatorSet xs
   where xop = case lookup x (map swap allops) of Nothing -> error ("bad value: " ++ x)
                                                  Just o -> o
 
+toStrings :: OperatorSet -> [String]
+toStrings o = map show $ distinctOperators o
+
 -- add/remove, etc
