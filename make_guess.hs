@@ -89,9 +89,12 @@ timeMe job start =
      getCPUTime
 
 main = do args0 <- getArgs
-          let (timeonly, args) = if length args0 == 3 && head args0 == "time"
-                                 then (True, tail args0)
-                                 else (False, args0)
+          let (timeonly, enumerateonly, args) =
+                if length args0 == 3
+                then case head args0 of
+                       "time" -> (True, False, tail args0)
+                       "enumerate" -> (True, True, tail args0)
+                else (False, False, args0)
               [nstr,i] = if length args == 2 then args else ["5", "VOG68zQWPy4L1Vu8hginHq02"]
               n = read nstr
           tr <- readTrain n i
@@ -100,6 +103,8 @@ main = do args0 <- getArgs
           putStrLn $ "I count " ++ show (length $ enumerate_program (problemsize tr) (operators tr)) 
             ++ " programs"
           start <- timeMe "Generating programs" start
+          if enumerateonly then exitSuccess
+                           else return ()
           putStrLn $ "I count " ++ show (length guesses) ++ " guesses"
           start <- timeMe "Generating guesses" start
           let (g, m) = solver (problemsize tr) (operators tr)
