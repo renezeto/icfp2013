@@ -1,0 +1,1 @@
+(lambda (x_14188) (xor (shl1 (if0 (or (not (shr1 (not x_14188))) 1) 0 1)) x_14188))
