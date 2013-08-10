@@ -96,8 +96,10 @@ enumerate_expression n musthave mayhave
       where
         fold_musthave = musthave `difference` op_tfold
         fold_mayhave = mayhave `difference` op_tfold `union` op_yz
-enumerate_expression 1 _ mayhave | mayhave `overlapsWith` op_yz = [Zero, One, X, Y, Z]
-                      | otherwise = [Zero, One, X]
+enumerate_expression 1 musthave mayhave
+  | musthave /= empty = [] -- we can't have musthaves here!
+  | mayhave `overlapsWith` op_yz = [Zero, One, X, Y, Z]
+  | otherwise = [Zero, One, X]
 enumerate_expression 2 musthave mayhave
   | musthave `overlapsWith` ops_binary_trinary = []
   | musthave `overlapsWith` ops_unary =
