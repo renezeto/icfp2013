@@ -15,7 +15,7 @@ data Ast = Zero | One | X | Y | Z
          | And Ast Ast | Or Ast Ast | Xor Ast Ast | Plus Ast Ast
          deriving ( Read, Show, Eq, Ord )
 
-data OperatorSet = OS Word16
+data OperatorSet = OS !Word16
                  deriving ( Eq )
 
 
@@ -335,7 +335,7 @@ randoms64 :: [Word64]
 randoms64 = randoms (mkStdGen 0)
 
 guesses :: [Word64]
-guesses = take 1 $ [0, 3, 5, 6, 0xffffffffffffffff] ++
+guesses = take 256 $ [0, 3, 5, 6, 0xffffffffffffffff] ++
           map (\x -> unsafeShiftL 1 x) [0..63] ++
           map (\x -> complement (unsafeShiftL 1 x)) [0..63] ++ randoms64
 
