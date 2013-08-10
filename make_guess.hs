@@ -102,18 +102,24 @@ main = do args0 <- getArgs
           start <- timeMe "File IO" 0
           let nprograms = length $ enumerate_program (problemsize tr) (operators tr)
           putStrLn $ "I count " ++ show nprograms ++ " programs"
-          let memoryuse = fromIntegral (length guesses) * fromIntegral nprograms * 8/1024.0/1024.0/1024.0
-          putStrLn $ "This means we require " ++ show memoryuse ++ " gigabytes for output"
+          let maxmemoryuse = 256 * fromIntegral nprograms * 8/1024.0/1024.0/1024.0
+              memorygoal = 0.1 -- gigabytes
+              scaledsize = floor $ memorygoal/maxmemoryuse*256
+              bestsize = if maxmemoryuse > memorygoal
+                         then if scaledsize < 1
+                              then 1
+                              else scaledsize
+                         else 256
+          putStrLn $ "This means we require " ++ show maxmemoryuse ++ " gigabytes for output"
+          putStrLn $ "The best size of guesses is " ++ show bestsize
           start <- timeMe "Generating programs" start
           if enumerateonly then exitSuccess
                            else return ()
-          putStrLn $ "I count " ++ show (length guesses) ++ " guesses"
-          start <- timeMe "Generating guesses" start
-          let (_, ma) = solver_array (problemsize tr) (operators tr)
+          let (_, ma) = solver_array bestsize (problemsize tr) (operators tr)
           putStrLn $ "number programs is " ++ show (length $ concat $ Map.elems ma)
           putStrLn $ "number distinguished outputs is " ++ show (length $ Map.elems ma)
           start <- timeMe "solver_array" start
-          let (g, m) = solver (problemsize tr) (operators tr)
+          let (g, m) = solver bestsize (problemsize tr) (operators tr)
           putStrLn $ "minsize is " ++ show (minimum_size (operators tr))
           putStrLn $ "problem size is " ++ show (problemsize tr)
           putStrLn $ "number programs is " ++ show (length $ concat $ Map.elems m)

@@ -340,27 +340,30 @@ randoms64 :: [Word64]
 randoms64 = randoms (mkStdGen 0)
 
 guesses :: [Word64]
-guesses = take 200 $ [0, 3, 5, 6, 0xffffffffffffffff] ++
+guesses = take 256 $ [0, 3, 5, 6, 0xffffffffffffffff] ++
           map (\x -> unsafeShiftL 1 x) [0..63] ++
           map (\x -> complement (unsafeShiftL 1 x)) [0..63] ++ randoms64
 
-betterguesses :: UArray Int Word64
-betterguesses = listArray (0,length(guesses)-1) guesses
+betterguesses :: Int -> UArray Int Word64
+betterguesses i | i > 256 = error "too big in betterguesses"
+                | otherwise = listArray (0,i-1) guesses
 
 eval_array :: Ast -> UArray Int Word64 -> UArray Int Word64
 eval_array f = amap (eval f)
 
-solver :: Int -> OperatorSet -> ([Word64], Map.Map [Word64] [Ast])
-solver sz ops = (guesses, mp)
+solver :: Int -> Int -> OperatorSet -> ([Word64], Map.Map [Word64] [Ast])
+solver nguesses sz ops = (g, mp)
   where mp = Map.fromListWith (++) assoc_list
-        assoc_list = map (\a -> (map (eval a) guesses , [a])) args
+        assoc_list = map (\a -> (map (eval a) g , [a])) args
         args = enumerate_program sz ops
+        g = take nguesses guesses
 
-solver_array :: Int -> OperatorSet -> (UArray Int Word64, Map.Map (UArray Int Word64) [Ast])
-solver_array sz ops = (betterguesses, mp)
+solver_array :: Int -> Int -> OperatorSet -> (UArray Int Word64, Map.Map (UArray Int Word64) [Ast])
+solver_array nguesses sz ops = (g, mp)
   where mp = Map.fromListWith (++) assoc_list
-        assoc_list = map (\a -> (amap (eval a) betterguesses , [a])) args
+        assoc_list = map (\a -> (amap (eval a) g , [a])) args
         args = enumerate_program sz ops
+        g = betterguesses nguesses
 
 niceHex :: Word64 -> String
 niceHex x = "0x" ++ replicate (16 - length nonzero) '0' ++ nonzero
