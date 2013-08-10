@@ -4,6 +4,7 @@ import Ast
 import Network.HTTP
 import Text.JSON
 import System.Directory ( createDirectoryIfMissing, removeFile, doesFileExist )
+import System.Environment ( getArgs )
 
 url path = "http://icfpc2013.cloudapp.net/" ++ path ++ "?auth=0175jv6XdpWdKm9pYxVcBgmSMCIlP4aVxQxZ3PqOvpsH1H"
 
@@ -52,9 +53,12 @@ saveTrain p =
      let chname = dir ++ "/challenge"
      writeFile chname $ challenge p ++ "\n"
 
-main = do tr <- getTrain 5
+main = do args <- getArgs
+          let probsize = (read (head args))
+          tr <- getTrain probsize
           putStrLn $ show tr
           saveTrain tr
+
 
     -- id: string;
     -- size: number;
