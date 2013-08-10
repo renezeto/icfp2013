@@ -62,24 +62,26 @@ eval (Plus e1 e2) x y z = (eval e1 x y z) + (eval e2 x y z)
 
 -- size: off by 1
 
-size :: Ast -> Int
-size Zero = 1
-size One = 1
-size X = 1
-size Y = 1
-size Z = 1
-size (If0 a b c) = 1 + size a + size b + size c
-size (Fold a b c) = 2 + size a + size b + size c
-size (Not e) = 1 + size e
-size (Shl1 e) = 1 + size e
-size (Shr1 e) = 1 + size e
-size (Shr4 e) = 1 + size e
-size (Shr16 e) = 1 + size e
-size (And a b) = 1 + size a + size b
-size (Or a b) = 1 + size a + size b
-size (Xor a b) = 1 + size a + size b
-size (Plus a b) = 1 + size a + size b
+sizeInternal :: Ast -> Int
+sizeInternal Zero = 1
+sizeInternal One = 1
+sizeInternal X = 1
+sizeInternal Y = 1
+sizeInternal Z = 1
+sizeInternal (If0 a b c) = 1 + sizeInternal a + sizeInternal b + sizeInternal c
+sizeInternal (Fold a b c) = 2 + sizeInternal a + sizeInternal b + sizeInternal c
+sizeInternal (Not e) = 1 + sizeInternal e
+sizeInternal (Shl1 e) = 1 + sizeInternal e
+sizeInternal (Shr1 e) = 1 + sizeInternal e
+sizeInternal (Shr4 e) = 1 + sizeInternal e
+sizeInternal (Shr16 e) = 1 + sizeInternal e
+sizeInternal (And a b) = 1 + sizeInternal a + sizeInternal b
+sizeInternal (Or a b) = 1 + sizeInternal a + sizeInternal b
+sizeInternal (Xor a b) = 1 + sizeInternal a + sizeInternal b
+sizeInternal (Plus a b) = 1 + sizeInternal a + sizeInternal b
 
+size :: Ast -> Int
+size e = sizeInternal e + 1 
 
 -- enumerate (requires a size and TWO OperatorSets (definitely and maybe))
 
@@ -243,6 +245,8 @@ toLisp (Or a b) = "(or "++toLisp a++" "++toLisp b++")"
 toLisp (Xor a b) = "(xor "++toLisp a++" "++toLisp b++")"
 toLisp (Plus a b) = "(plus "++toLisp a++" "++toLisp b++")"
 
+lispify :: Ast -> String
+lispify e = "(lambda (x) "++toLisp e++")"
 
 -- OperatorSet code:
 
