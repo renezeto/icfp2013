@@ -1,6 +1,8 @@
+.gitignore
 *.hi
 *~
 *.o
 runit
 *#
 .#*
+pull_from_everyone.sh
