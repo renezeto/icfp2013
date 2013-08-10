@@ -4,6 +4,8 @@ import Data.Tuple ( swap )
 import Data.Word ( Word8, Word16, Word64 )
 import Data.Bits ( Bits(..) )
 
+import Debug.Trace
+
 data Ast = Zero | One | X | Y | Z
          | If0 Ast Ast Ast | Fold Ast Ast Ast
          | Not Ast | Shl1 Ast | Shr1 Ast | Shr4 Ast | Shr16 Ast
@@ -107,6 +109,9 @@ enumerate 4 musthave mayhave
   | musthave `overlapsWith` ops_unary =
       case distinctOperators $ intersection musthave ops_unary of
         [myop] -> apply_single_unary myop (enumerate 3 (musthave `difference` myop) mayhave)
+        [op1,op2] -> trace ("got here args" ++ show args) apply_single_unary op1 (apply_single_unary op2 args) ++
+                     apply_single_unary op2 (apply_single_unary op1 args)
+          where args = enumerate 2 (musthave `difference` (union op1 op2)) mayhave
         _ -> []
   | otherwise = (concatMap binary_asts binaries) ++ (concatMap unary_asts unaries)
       where binaries = filter (overlapsWith ops_binary) $ distinctOperators mayhave
