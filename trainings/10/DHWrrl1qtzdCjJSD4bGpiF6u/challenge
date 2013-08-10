@@ -1,0 +1,1 @@
+(lambda (x_9655) (if0 (plus (shr1 1) (not x_9655)) 1 (shr1 x_9655)))
