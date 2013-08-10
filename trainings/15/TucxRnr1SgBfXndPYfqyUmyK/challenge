@@ -1,0 +1,1 @@
+(lambda (x_31841) (fold (plus (shl1 (shr1 (or x_31841 0))) x_31841) 1 (lambda (x_31842 x_31843) (plus x_31842 (shl1 x_31843)))))
