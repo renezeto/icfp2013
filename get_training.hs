@@ -58,10 +58,3 @@ main = do args <- getArgs
           tr <- getTrain probsize
           putStrLn $ show tr
           saveTrain tr
-
-
-    -- id: string;
-    -- size: number;
-    -- operators: string[];
-    -- solved?: boolean;
-    -- timeLeft?: number
