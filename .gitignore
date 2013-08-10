@@ -7,3 +7,4 @@ runit
 .#*
 lookup_problems
 get_training
+pull_from_everyone.sh
