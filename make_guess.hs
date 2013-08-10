@@ -35,6 +35,38 @@ submitEval ident g =
                               Ok strings = readJSON outs
                   return $ pars a
 
+submitGuess :: String -> Ast -> IO (Maybe (Word64, Word64, Word64))
+submitGuess ident p =
+  do d <- getdata "guess" ("{\"id\":" ++ show ident ++ ",\"program\":" ++ show (lispify p) ++ "}")
+     putStrLn d
+     case decode d of
+       Error e -> fail $ "submitGuess error " ++ e
+       Ok (JSObject a) ->
+         case lookup "status" (fromJSObject a) of
+           Nothing -> fail "shoudlnt' be possible"
+           Just statstr ->
+             case readJSON statstr of
+               Ok "win" -> return Nothing
+               Ok "error" -> fail "error says the status"
+               Ok "mismatch" ->
+                 case lookup "values" (fromJSObject a) of
+                   Nothing -> fail "cannot happend"
+                   Just valstr ->
+                     case readJSON valstr of
+                       Ok (a,b,c) -> return (Just (read a, read b, read c))
+
+makeGuess :: String -> [Ast] -> IO ()
+makeGuess _ [] = fail "I have no idea!"
+makeGuess ident [a] = do submitGuess ident a
+                         fail "oops"
+makeGuess ident (b:bs) =
+  do r <- submitGuess ident b
+     case r of
+       Nothing -> putStrLn "We won, we won!!!"
+       Just (inp, out, _) ->
+         do putStrLn $ "I could do better on " ++ niceHex inp
+            makeGuess ident (filter (\p -> eval p inp 0 0 == out) bs)
+
 readTrain :: Int -> String -> IO Problem
 readTrain sz ident =
   do let dir = "trainings/" ++ show sz ++ "/" ++ ident
@@ -61,6 +93,6 @@ main = do args <- getArgs
           case Map.lookup a m of
             Nothing -> fail "This is impossible!"
             Just [] -> fail "coudn't happen"
-            Just [p] -> putStrLn $ lispify p
             Just ps -> do putStrLn $ "Could be one of " ++ show (length ps)
                           putStrLn $ unlines $ map lispify ps
+                          makeGuess i ps

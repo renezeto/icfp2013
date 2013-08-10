@@ -227,7 +227,7 @@ toLisp (If0 e a b)  = "(if0 "++toLisp e++" "++toLisp a++" "++toLisp b++")"
 toLisp (Fold e a b) = "(fold "++toLisp e++" "++toLisp a++" "++"(lambda (y z) "++toLisp b++"))"
 
 toLisp (Not e) = "(not "++toLisp e++")"
-toLisp (Shl1 e) = "(sh11 "++toLisp e++")"
+toLisp (Shl1 e) = "(shl1 "++toLisp e++")"
 toLisp (Shr1 e) = "(shr1 "++toLisp e++")"
 toLisp (Shr4 e) = "(shr4 "++toLisp e++")"
 toLisp (Shr16 e) = "(shr16 "++toLisp e++")"
@@ -322,7 +322,7 @@ randoms64 :: [Word64]
 randoms64 = randoms (mkStdGen 0)
 
 guesses :: [Word64]
-guesses = take 6 $ [0, 3, 5, 6, 0xffffffffffffffff] ++
+guesses = take 1 $ [0, 3, 5, 6, 0xffffffffffffffff] ++
           map (\x -> unsafeShiftL 1 x) [0..63] ++
           map (\x -> complement (unsafeShiftL 1 x)) [0..63] ++ randoms64
 
