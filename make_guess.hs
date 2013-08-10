@@ -30,7 +30,9 @@ data Problem = Problem {
 submitEval :: String -> [Word64] -> IO [Word64]
 submitEval ident g =
   do d <- getdata "eval" ("{\"id\":" ++ show ident ++ ",\"arguments\":" ++ hexes g ++ "}")
-     putStrLn d
+     if length d < 128
+       then putStrLn $ "Response was: " ++ d
+       else putStrLn $ "Response was length " ++ show (length d)
      case decode d of
        Error e -> fail $ "Error: " ++ e
        Ok a -> do let pars :: JSValue -> [Word64]
@@ -103,32 +105,32 @@ printNumber nprograms =
                  show (round $ fromIntegral nprograms) ++ " programs"
 
 main = do args0 <- getArgs
-          let (timeonly, args) =
+          let (todo, args) =
                 if length args0 == 3
                 then case head args0 of
-                       "time" -> (True, tail args0)
-                else (False, args0)
+                       "time" -> ("time", tail args0)
+                       "count-programs" -> ("count-programs", tail args0)
+                else ("", args0)
               [nstr,i] = if length args == 2 then args else ["5", "VOG68zQWPy4L1Vu8hginHq02"]
               n = read nstr
           tr <- readTrain n i
           putStrLn $ show tr
           start <- timeMe "File IO" 0
-          let programs = enumerate_program (problemsize tr) (operators tr)
-              nprograms = length programs
-          if timeonly
-            then do printNumber nprograms
-                    start <- timeMe "Generating programs" start
-                    let idprograms = filter issame programs
-                        issame p = map (eval p) guesses == guesses
-                    putStrLn $ "This involves " ++ show (length idprograms) ++ " identity programs"
-                    start <- timeMe "Filtering identity programs" start
-                    let rndprograms = filter isrnd programs
+          case todo of
+            "time" ->
+                 do let programs = enumerate_program (problemsize tr) (operators tr)
+                        rndprograms = filter isrnd programs
                         isrnd p = map (eval p) guesses == rndout
                         rndout = take (length guesses) $ randoms (mkStdGen 1)
-                    putStrLn $ "This involves " ++ show (length rndprograms) ++ " programs matching randoms"
+                    printNumber $ length rndprograms
                     start <- timeMe "Filtering random programs" start
                     exitSuccess
-            else return ()
+            "count-programs" ->
+                 do let programs = enumerate_program (problemsize tr) (operators tr)
+                    printNumber (length programs)
+                    start <- timeMe "Counting programs" start
+                    exitSuccess
+            _ -> return ()
           a <- submitEval i guesses
+          let programs = enumerate_program (problemsize tr) (operators tr)
           makeGuess i $ filter (\p -> map (eval p) guesses == a) programs
-
