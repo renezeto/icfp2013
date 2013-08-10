@@ -102,8 +102,19 @@ main = do args0 <- getArgs
           start <- timeMe "File IO" 0
           let nprograms = length $ enumerate_program (problemsize tr) (operators tr)
           putStrLn $ "I count " ++ show nprograms ++ " programs"
+          if nprograms > 1024*1024*1024
+            then putStrLn $ "I count " ++
+                 show (round $ fromIntegral nprograms/1024.0/1024.0/1024.0) ++ " gigaprograms"
+            else if nprograms > 1024*1024
+                 then putStrLn $ "I count " ++
+                      show (round $ fromIntegral nprograms/1024.0/1024.0) ++ " megaprograms"
+                 else if nprograms > 1024
+                      then putStrLn $ "I count " ++
+                           show (round $ fromIntegral nprograms/1024.0) ++ " kiloprograms"
+                      else putStrLn $ "I count " ++
+                           show (round $ fromIntegral nprograms) ++ " programs"
           let maxmemoryuse = 256 * fromIntegral nprograms * 8/1024.0/1024.0/1024.0
-              memorygoal = 0.1 -- gigabytes
+              memorygoal = 0.5 -- gigabytes
               scaledsize = floor $ memorygoal/maxmemoryuse*256
               bestsize = if maxmemoryuse > memorygoal
                          then if scaledsize < 1
@@ -116,6 +127,7 @@ main = do args0 <- getArgs
           if enumerateonly then exitSuccess
                            else return ()
           let (_, ma) = solver_array bestsize (problemsize tr) (operators tr)
+          putStrLn $ "number elements in map " ++ show (Map.size ma)
           putStrLn $ "number programs is " ++ show (length $ concat $ Map.elems ma)
           putStrLn $ "number distinguished outputs is " ++ show (length $ Map.elems ma)
           start <- timeMe "solver_array" start
