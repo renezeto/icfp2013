@@ -129,7 +129,12 @@ main = do args0 <- getArgs
 timeMe :: String -> Integer -> IO Integer
 timeMe job start =
   do stop <- getCPUTime
-     putStrLn $ job ++ " took " ++ show (fromIntegral (stop-start)/1.0e12 :: Double) ++ " seconds"
+     let totalseconds = fromIntegral (stop-start)/1.0e12 :: Double
+         minutes = floor (totalseconds/60)
+         seconds = floor (totalseconds - 60*fromIntegral minutes)
+     if minutes == 0
+       then putStrLn $ job ++ " took " ++ show seconds ++ " seconds"
+       else putStrLn $ job ++ " took " ++ show minutes ++ " and " ++ show seconds ++ " seconds"
      getCPUTime
 
 printNumber :: Int -> IO ()
