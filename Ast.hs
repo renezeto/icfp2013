@@ -1,5 +1,6 @@
 module Ast where
 
+import Numeric ( showHex )
 import Data.Tuple ( swap )
 import Data.Word ( Word8, Word16, Word64 )
 import Data.Bits ( Bits(..) )
@@ -330,7 +331,7 @@ randoms64 :: [Word64]
 randoms64 = randoms (mkStdGen 0)
 
 guesses :: [Word64]
-guesses = take 256 $ [0, 3, 5, 6, 0xffffffffffffffff] ++
+guesses = take 6 $ [0, 3, 5, 6, 0xffffffffffffffff] ++
           map (\x -> unsafeShiftL 1 x) [0..63] ++
           map (\x -> complement (unsafeShiftL 1 x)) [0..63] ++ randoms64
 
@@ -339,3 +340,14 @@ solver sz ops = (guesses, mp)
   where mp = Map.fromListWith (++) assoc_list
         assoc_list = map (\a -> (map (\x -> eval a x 0 0) guesses , [a])) args
         args = enumerate sz ops ops
+
+niceHex :: Word64 -> String
+niceHex x = "0x" ++ replicate (16 - length nonzero) '0' ++ nonzero
+  where nonzero = showHex x ""
+
+hexes :: [Word64] -> String
+hexes = show . map niceHex
+-- hexes xs = "[" ++ hx xs
+--   where hx [] = "]"
+--         hx [d] = niceHex d ++ "]"
+--         hx (d:d2:ds) = niceHex d ++"," ++ hx (d2:ds)
