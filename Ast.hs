@@ -17,7 +17,7 @@ data Ast = Zero | One | X | Y | Z
          | And Ast Ast | Or Ast Ast | Xor Ast Ast | Plus Ast Ast
          deriving ( Read, Show, Eq, Ord )
 
-data OperatorSet = OS !Word16
+newtype OperatorSet = OS Word16
                  deriving ( Eq )
 
 
