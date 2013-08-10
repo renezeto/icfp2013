@@ -2,7 +2,6 @@ module Ast where
 
 import Numeric ( showHex )
 import Data.Tuple ( swap )
-import Data.List ( nub )
 import Data.Word ( Word8, Word16, Word64 )
 import Data.Bits ( Bits(..) )
 import qualified Data.Map as Map
@@ -92,7 +91,7 @@ enumerate_program n musthave = enumerate_expression (n-1) musthave musthave
 enumerate_expression :: Int -> OperatorSet -> OperatorSet -> [Ast]
 enumerate_expression n musthave mayhave
   | musthave `overlapsWith` op_tfold  =
-    apply_fold [X] [Zero] (enumerate_expression (n-4) fold_musthave fold_mayhave)
+   map (Fold X Zero) (enumerate_expression (n-4) fold_musthave fold_mayhave)
       where
         fold_musthave = musthave `difference` op_tfold
         fold_mayhave = mayhave `difference` op_tfold `union` op_yz
@@ -118,56 +117,52 @@ enumerate_expression 3 musthave mayhave
         _ -> []
   | length (distinctOperators (intersection musthave ops_unary)) > 1 =
       case distinctOperators $ intersection musthave ops_unary of
-        [op1,op2] -> trace ("got here args" ++ show args) apply_single_unary op1 (apply_single_unary op2 args) ++
+        [op1,op2] ->  apply_single_unary op1 (apply_single_unary op2 args) ++
                      apply_single_unary op2 (apply_single_unary op1 args)
           where args = enumerate_expression 1 (musthave `difference` (union op1 op2)) mayhave
         _ -> []
-  | otherwise = (concatMap binary_asts binaries) ++ trace ("unaries are" ++ show unaries) (concatMap unary_asts unaries)
+  | otherwise = (concatMap binary_asts binaries) ++ (concatMap unary_asts unaries)
       where binaries = filter (overlapsWith ops_binary) $ distinctOperators mayhave
             binary_asts myop = apply_single_binary myop (enumerate_expression 1 musthave mayhave)
             unaries = filter (overlapsWith ops_unary) $ distinctOperators mayhave
             unary_asts myop = apply_single_unary myop (enumerate_expression 2 (musthave `difference` myop) mayhave)
-
 enumerate_expression n musthave mayhave
   | minimum_size musthave > n = []
-  | otherwise = (concatMap unary_asts unaries) ++ binary_tree -- ++ fold_asts ++ if_asts
+  | otherwise = unary_tree ++ binary_tree ++ if_tree ++ fold_tree
   where
-  --   fold_asts = if mayhave `overlapsWith` op_fold then
-  --                 concat [apply_fold (enumerate_expression i fold_musthave fold_mayhave)
-  --                         (enumerate_expression j fold_musthave fold_mayhave)
-  --                         (enumerate_expression (n-2-i-j) fold_musthave fold_mayhave)
-  --                        | i <- [1..n-4], j <- [1..n-3-i]]
-  --               else []
-  --   fold_musthave = musthave `difference` op_fold
-  --   fold_mayhave = mayhave `difference` op_fold `union` op_yz
-  --   if_asts = if mayhave `overlapsWith` op_if then
-  --               concat [apply_if (enumerate_expression i if_musthave mayhave)
-  --                       (enumerate_expression j if_musthave mayhave)
-  --                       (enumerate_expression (n-1-i-j) if_musthave mayhave)
-  --                      | i <- [1..n-3], j <- [1..n-2-i]]
-  --             else []
-  --   if_musthave = musthave `difference` op_if
-    -- if_tree = [apply_if e1 e2 e3 |
-    --            i <- [2..(n-wsdsad)],
-    --            j <- [i..n],
-    --            e1 <- enumerate_expression i (musthave `difference` op_if) mayhave,
-    --            let e1_ops = find_ast_ops e1,
-    --            e2 <- enumerate_expression j (musthave `difference` (e1_ops `union` op_if)) mayhave,
-    --            let e2_ops = find_ast_ops e2,
-    --            e3 <- enumerate_expression (n-i-j) (musthave `difference` (e1_ops `union` (e2_ops `union` op_if))) mayhave]
+    fold_tree = [Fold e1 e2 e3 |
+                 i <- [1..(n-2-2)],
+                 j <- [1..(n-2-i-1)],
+                 e1 <- enumerate_expression i fold_must fold_may,
+                 let e1_ops = find_ast_ops e1,
+                 e2 <- enumerate_expression j (fold_must `difference` e1_ops) fold_may,
+                 let e2_ops = find_ast_ops e2,
+                 e3 <- enumerate_expression (n-2-i-j)
+                       (fold_must `difference` (e1_ops `union` e2_ops))
+                       (fold_may `union` op_yz)]
+      where fold_must = musthave `difference` op_fold
+            fold_may = mayhave `difference` op_fold
+
+    if_tree = [If0 e1 e2 e3 |
+               i <- [1..(n-1-2)],
+               j <- [1..(n-1-i-1)],
+               e1 <- enumerate_expression i (musthave `difference` op_if) mayhave,
+               let e1_ops = find_ast_ops e1,
+               e2 <- enumerate_expression j (musthave `difference` (e1_ops `union` op_if)) mayhave,
+               let e2_ops = find_ast_ops e2,
+               e3 <- enumerate_expression (n-1-i-j) (musthave `difference` (e1_ops `union` (e2_ops `union` op_if))) mayhave]
     binary_tree = [apply_binary myop e1 e2 |
                 i <- [1..((n-1)`div`2)],
                 myop <- filter (overlapsWith ops_binary) $ distinctOperators mayhave,
                 e1 <- enumerate_expression i (musthave `difference` myop) mayhave,
                 let e1_ops = find_ast_ops e1,
                 e2 <- enumerate_expression (n-1-i) (musthave `difference` (union e1_ops myop)) mayhave]
-
-    unaries = filter (overlapsWith ops_unary) $ distinctOperators mayhave
-    unary_asts myop = apply_single_unary myop (enumerate_expression (n-1) (musthave `difference` myop) mayhave)
-
+    unary_tree = [apply_unary myop e1 |
+                  myop <- filter (overlapsWith ops_unary) $ distinctOperators mayhave,
+                  e1 <- enumerate_expression (n-1) (musthave `difference` myop) mayhave]
 
 minimum_size :: OperatorSet -> Int
-minimum_size o = 2 + (fromEnum $ o `overlapsWith` op_not)
+minimum_size o = 1 + (fromEnum $ o `overlapsWith` op_not)
                  + (fromEnum $ o `overlapsWith` op_shl1)
                  + (fromEnum $ o `overlapsWith` op_shr1)
                  + (fromEnum $ o `overlapsWith` op_shr4)
@@ -179,19 +174,20 @@ minimum_size o = 2 + (fromEnum $ o `overlapsWith` op_not)
                  + 3*(fromEnum $ o `overlapsWith` op_if)
                  + 4*(fromEnum $ o `overlapsWith` op_fold)
 
-apply_if :: Ast -> Ast -> Ast -> Ast
-apply_if a b c = If0 a b c
-
-apply_fold :: [Ast] -> [Ast] -> [Ast] -> [Ast]
-apply_fold xs ys zs = [Fold a b c | a <- xs, b <- ys, c <- zs]
-
 apply_binary :: OperatorSet -> Ast -> Ast -> Ast
 apply_binary o a b
   | o == op_plus = Plus a b
   | o == op_or = Or a b
   | o == op_xor = Xor a b
   | o == op_and = And a b
-  | otherwise = error "Binary expected"
+
+apply_unary :: OperatorSet -> Ast -> Ast
+apply_unary o e
+  | o == op_not = Not e
+  | o == op_shl1 = Shl1 e
+  | o == op_shr1 = Shr1 e
+  | o == op_shr4 = Shr4 e
+  | o == op_shr16 = Shr16 e
 
 apply_single_binary :: OperatorSet -> [Ast] -> [Ast]
 apply_single_binary o xs
