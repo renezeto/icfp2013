@@ -10,4 +10,4 @@ get_training
 check_status
 make_guess
 pull_from_everyone.sh
-
+trainings/
