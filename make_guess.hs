@@ -106,6 +106,7 @@ main = do nstr:i:args <- getArgs
                 [] -> ""
                 _ | "time" `elem` args -> "time"
                   | "count-programs" `elem` args -> "count-programs"
+                  | "problem" `elem` args -> ""
               kind = if "problem" `elem` args
                      then DoProblem
                      else DoTrain
