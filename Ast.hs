@@ -102,7 +102,6 @@ eval3 (Plus e1 e2) x y z = (eval3 e1 x y z) + (eval3 e2 x y z)
 
 
 -- size:
-
 sizeInternal :: Ast -> Int
 sizeInternal Zero = 1
 sizeInternal One = 1
@@ -263,7 +262,6 @@ apply_single_unary o xs
   | otherwise = []
 
 -- OperatorSet from Ast
-
 find_ast_ops :: Ast -> OperatorSet
 find_ast_ops (Not e) = op_not `union` (find_ast_ops e)
 find_ast_ops (Shl1 e) = op_shl1 `union` (find_ast_ops e)
@@ -327,7 +325,8 @@ op_xor = OS 512
 op_plus = OS 1024
 op_yz = OS 2048
 op_tfold = OS 4096
-
+op_bonus = OS 8192
+  
 allops = [(op_if, "if0"),
           (op_fold, "fold"),
           (op_not, "not"),
@@ -340,7 +339,8 @@ allops = [(op_if, "if0"),
           (op_xor, "xor"),
           (op_plus, "plus"),
           (op_tfold, "tfold"),
-          (op_yz, "yz")]
+          (op_yz, "yz"),
+          (op_bonus, "bonus")]
 
 empty = OS 0
 
