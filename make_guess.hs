@@ -2,6 +2,7 @@ module Main where
 
 import Data.Word ( Word64 )
 import qualified Data.Map as Map
+import System.Exit ( exitSuccess )
 
 import Ast
 import Network.HTTP
@@ -80,18 +81,29 @@ readTrain sz ident =
        solved = alreadydone
        }
 
-main = do args <- getArgs
-          let [nstr,i] = if length args == 2 then args else ["5", "VOG68zQWPy4L1Vu8hginHq02"]
-          let n = read nstr
+main = do args0 <- getArgs
+          let (timeonly, args) = if length args0 == 3 && head args0 == "time"
+                                 then (True, tail args0)
+                                 else (False, args0)
+              [nstr,i] = if length args == 2 then args else ["5", "VOG68zQWPy4L1Vu8hginHq02"]
+              n = read nstr
           tr <- readTrain n i
           putStrLn $ show tr
           let (g, m) = solver (problemsize tr) (operators tr)
+          putStrLn $ "minsize is " ++ show (minimum_size (operators tr))
+          putStrLn $ "problem size is " ++ show (problemsize tr)
+          putStrLn $ "number programs is " ++ show (length $ concat $ Map.elems m)
+          putStrLn $ "number distinguished outputs is " ++ show (length $ Map.elems m)
+          if timeonly then exitSuccess
+                      else return ()
           a <- submitEval i g
           print a
           putStrLn $ hexes a
           putStrLn $ show m
           case Map.lookup a m of
-            Nothing -> fail "This is impossible!"
+            Nothing -> do let ps = concat $ Map.elems m
+                          putStrLn $ unlines $ map lispify ps
+                          fail "This is impossible!"
             Just [] -> fail "coudn't happen"
             Just ps -> do putStrLn $ "Could be one of " ++ show (length ps)
                           putStrLn $ unlines $ map lispify ps
