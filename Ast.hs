@@ -3,6 +3,8 @@ module Ast where
 import Data.Tuple ( swap )
 import Data.Word ( Word8, Word16, Word64 )
 import Data.Bits ( Bits(..) )
+import qualified Data.Map as Map
+import System.Random
 
 import Debug.Trace
 
@@ -320,4 +322,16 @@ toOperatorSet (x:xs) = xop `union` toOperatorSet xs
 toStrings :: OperatorSet -> [String]
 toStrings o = map show $ distinctOperators o
 
--- add/remove, etc
+randoms64 :: [Word64]
+randoms64 = randoms (mkStdGen 0)
+
+guesses :: [Word64]
+guesses = take 256 $ [0, 3, 5, 6, 0xffffffffffffffff] ++
+          map (\x -> unsafeShiftL 1 x) [0..63] ++
+          map (\x -> complement (unsafeShiftL 1 x)) [0..63] ++ randoms64
+
+solver :: Int -> OperatorSet -> ([Word64], Map.Map [Word64] [Ast])
+solver sz ops = (guesses, mp)
+  where mp = Map.fromListWith (++) assoc_list
+        assoc_list = map (\a -> (map (\x -> eval a x 0 0) guesses , [a])) args
+        args = enumerate sz ops ops
