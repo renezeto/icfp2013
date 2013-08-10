@@ -4,6 +4,8 @@ import Data.Tuple ( swap )
 import Data.Word ( Word8, Word16, Word64 )
 import Data.Bits ( Bits(..) )
 
+import Debug.Trace
+
 data Ast = Zero | One | X | Y | Z
          | If0 Ast Ast Ast | Fold Ast Ast Ast
          | Not Ast | Shl1 Ast | Shr1 Ast | Shr4 Ast | Shr16 Ast
@@ -56,7 +58,7 @@ eval (Plus e1 e2) x y z = (eval e1 x y z) + (eval e2 x y z)
 
 
 
--- size
+-- size: off by 1
 
 size :: Ast -> Int
 size Zero = 1
@@ -86,66 +88,82 @@ enumerate n musthave mayhave
       where
         fold_musthave = musthave `difference` op_tfold
         fold_mayhave = mayhave `difference` op_tfold `union` op_yz
-enumerate 1 _ mayhave | mayhave `overlapsWith` op_yz = [Zero, One, X, Y, Z]
+enumerate 2 _ mayhave | mayhave `overlapsWith` op_yz = [Zero, One, X, Y, Z]
                       | otherwise = [Zero, One, X]
-enumerate 2 musthave mayhave
+enumerate 3 musthave mayhave
   | musthave `overlapsWith` ops_binary_trinary = []
   | musthave `overlapsWith` ops_unary =
     case distinctOperators $ intersection musthave ops_unary of
-        [myop] -> apply_single_unary myop (enumerate 1 (musthave `difference` myop) mayhave)
+        [myop] -> apply_single_unary myop (enumerate 2 (musthave `difference` myop) mayhave)
         _ -> []
   | otherwise = concatMap thingsfor unaries
       where unaries = filter (overlapsWith ops_unary) $ distinctOperators mayhave
-            thingsfor myop = apply_single_unary myop (enumerate 1 (musthave `difference` myop) mayhave)
-enumerate 3 musthave mayhave
+            thingsfor myop = apply_single_unary myop (enumerate 2 (musthave `difference` myop) mayhave)
+enumerate 4 musthave mayhave
   | musthave `overlapsWith` ops_trinary = []
   | musthave `overlapsWith` ops_binary && musthave `overlapsWith` ops_unary = []
   | musthave `overlapsWith` ops_binary =
     case distinctOperators $ intersection musthave ops_binary of
-        [myop] -> apply_single_binary myop (enumerate 1 (musthave `difference` myop) mayhave)
+        [myop] -> apply_single_binary myop (enumerate 2 (musthave `difference` myop) mayhave)
         _ -> []
   | musthave `overlapsWith` ops_unary =
       case distinctOperators $ intersection musthave ops_unary of
-        [myop] -> apply_single_unary myop (enumerate 2 (musthave `difference` myop) mayhave)
+        [myop] -> apply_single_unary myop (enumerate 3 (musthave `difference` myop) mayhave)
+        [op1,op2] -> trace ("got here args" ++ show args) apply_single_unary op1 (apply_single_unary op2 args) ++
+                     apply_single_unary op2 (apply_single_unary op1 args)
+          where args = enumerate 2 (musthave `difference` (union op1 op2)) mayhave
         _ -> []
   | otherwise = (concatMap binary_asts binaries) ++ (concatMap unary_asts unaries)
       where binaries = filter (overlapsWith ops_binary) $ distinctOperators mayhave
-            binary_asts myop = apply_single_binary myop (enumerate 1 musthave mayhave)
+            binary_asts myop = apply_single_binary myop (enumerate 2 musthave mayhave)
             unaries = filter (overlapsWith ops_unary) $ distinctOperators mayhave
-            unary_asts myop = apply_single_unary myop (enumerate 2 musthave mayhave)
+            unary_asts myop = apply_single_unary myop (enumerate 3 musthave mayhave)
 
 enumerate n musthave mayhave
   | minimum_size musthave > n = []
   | otherwise = fold_asts ++ if_asts ++ (concatMap binary_asts binaries) ++ (concatMap unary_asts unaries)
-  where fold_asts = if mayhave `overlapsWith` op_fold then
-                      concat [apply_fold (enumerate i fold_musthave fold_mayhave)
-                                         (enumerate j fold_musthave fold_mayhave)
-                                         (enumerate (n-2-i-j) fold_musthave fold_mayhave)
-                             | i <- [1..n-4], j <- [1..n-3-i]]
-                    else []
-        fold_musthave = musthave `difference` op_fold
-        fold_mayhave = mayhave `difference` op_fold `union` op_yz
-        if_asts = if mayhave `overlapsWith` op_if then
-                    concat [apply_if (enumerate i if_musthave mayhave)
-                                     (enumerate j if_musthave mayhave)
-                                     (enumerate (n-1-i-j) if_musthave mayhave)
-                           | i <- [1..n-3], j <- [1..n-2-i]]
-                  else []
-        if_musthave = musthave `difference` op_if
-        binaries = filter (overlapsWith ops_binary) $ distinctOperators mayhave
-        binary_asts myop = concat [apply_binary myop (enumerate i (musthave `difference` myop) mayhave)
-                                                     (enumerate (n-1-i) (musthave `difference` myop) mayhave)
-                                  | i <- [1..n-2]]
-        unaries = filter (overlapsWith ops_unary) $ distinctOperators mayhave
-        unary_asts myop = apply_single_unary myop (enumerate (n-1) (musthave `difference` myop) mayhave)
+  where
+    fold_asts = if mayhave `overlapsWith` op_fold then
+                  concat [apply_fold (enumerate i fold_musthave fold_mayhave)
+                          (enumerate j fold_musthave fold_mayhave)
+                          (enumerate (n-2-i-j) fold_musthave fold_mayhave)
+                         | i <- [1..n-4], j <- [1..n-3-i]]
+                else []
+    fold_musthave = musthave `difference` op_fold
+    fold_mayhave = mayhave `difference` op_fold `union` op_yz
+    if_asts = if mayhave `overlapsWith` op_if then
+                concat [apply_if (enumerate i if_musthave mayhave)
+                        (enumerate j if_musthave mayhave)
+                        (enumerate (n-1-i-j) if_musthave mayhave)
+                       | i <- [1..n-3], j <- [1..n-2-i]]
+              else []
+    if_musthave = musthave `difference` op_if
+
+
+
+    binaries = filter (overlapsWith ops_binary) $ distinctOperators mayhave
+    binary_asts myop = concat [apply_binary myop (enumerate i (musthave `difference` myop) mayhave)
+                               (enumerate (n-1-i) (musthave `difference` myop) mayhave)
+                              | i <- [1..(n-1)`div`2]]
+
+
+    -- binaries = filter (overlapsWith ops_binary) $ distinctOperators mayhave
+    -- binary_asts myop = concat [apply_binary myop (enumerate i (musthave `difference` myop) mayhave)
+    --                            (enumerate (n-1-i) (musthave `difference` myop) mayhave)
+    --                           | i <- [1..(n-1)`div`2]]
+
+
+
+    unaries = filter (overlapsWith ops_unary) $ distinctOperators mayhave
+    unary_asts myop = apply_single_unary myop (enumerate (n-1) (musthave `difference` myop) mayhave)
 
 
 minimum_size :: OperatorSet -> Int
-minimum_size o = 1 + (fromEnum $ o `overlapsWith` op_not)
+minimum_size o = 2 + (fromEnum $ o `overlapsWith` op_not)
                  + (fromEnum $ o `overlapsWith` op_shl1)
                  + (fromEnum $ o `overlapsWith` op_shr1)
                  + (fromEnum $ o `overlapsWith` op_shr4)
-                 +(fromEnum $ o `overlapsWith` op_shr16)
+                 + (fromEnum $ o `overlapsWith` op_shr16)
                  + 2*((fromEnum $ o `overlapsWith` op_plus)
                       + (fromEnum $ o `overlapsWith` op_or)
                       + (fromEnum $ o `overlapsWith` op_xor)
@@ -187,7 +205,20 @@ apply_single_unary o xs
 -- OperatorSet from Ast
 
 find_ast_ops :: Ast -> OperatorSet
-find_ast_ops _ = undefined
+find_ast_ops (Not e) = op_not `union` (find_ast_ops e)
+find_ast_ops (Shl1 e) = op_shl1 `union` (find_ast_ops e)
+find_ast_ops (Shr1 e) = op_shr1 `union` (find_ast_ops e)
+find_ast_ops (Shr4 e) = op_shr4 `union` (find_ast_ops e)
+find_ast_ops (Shr16 e) = op_shr16 `union` (find_ast_ops e)
+find_ast_ops (Plus a b) = op_plus `union` (find_ast_ops a) `union` (find_ast_ops b)
+find_ast_ops (Or a b) = op_or `union` (find_ast_ops a) `union` (find_ast_ops b)
+find_ast_ops (Xor a b) = op_xor `union` (find_ast_ops a) `union` (find_ast_ops b)
+find_ast_ops (And a b) = op_and `union` (find_ast_ops a) `union` (find_ast_ops b)
+find_ast_ops (Fold a b c) = op_fold `union` (find_ast_ops a) `union` (find_ast_ops b) `union` (find_ast_ops c)
+find_ast_ops (If0 a b c) = op_if `union` (find_ast_ops a) `union` (find_ast_ops b) `union` (find_ast_ops c)
+find_ast_ops Y = op_yz
+find_ast_ops Z = op_yz
+find_ast_ops _ = empty
 
 -- lisp output
 toLisp :: Ast -> String

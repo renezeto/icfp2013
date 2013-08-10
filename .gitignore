@@ -5,4 +5,5 @@
 runit
 *#
 .#*
-pull_from_everyone.sh
+lookup_problems
+get_training

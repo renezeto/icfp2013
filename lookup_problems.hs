@@ -7,7 +7,7 @@ import System.Directory ( createDirectoryIfMissing, removeFile, doesFileExist )
 
 url path = "http://icfpc2013.cloudapp.net/" ++ path ++ "?auth=0175jv6XdpWdKm9pYxVcBgmSMCIlP4aVxQxZ3PqOvpsH1H"
 
-getdata path body = do a <- simpleHTTP (postRequestWithBody (url "myproblems") "text/text" "")
+getdata path body = do a <- simpleHTTP (postRequestWithBody (url path) "text/text" body)
                        getResponseBody a
 
 data Problem = Problem {
