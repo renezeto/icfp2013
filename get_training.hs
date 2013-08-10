@@ -57,4 +57,6 @@ main = do args <- getArgs
           let probsize = (read (head args))
           tr <- getTrain probsize
           putStrLn $ show tr
+          putStrLn $ "./build-all.sh && time ./make_guess time " ++ show (problemsize tr) ++
+            " " ++ problemid tr
           saveTrain tr
