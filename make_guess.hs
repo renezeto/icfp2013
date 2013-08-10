@@ -65,7 +65,7 @@ submitGuess ident p =
 problemDir :: Problem -> String
 problemDir p = kdir ++ show (problemsize p) ++ "/" ++ problemid p ++ "/"
   where kdir = case problemkind p of DoTrain -> "trainings/"
-                                     DoProblem -> "trainings/"
+                                     DoProblem -> "error-for-now/"
 
 makeGuess :: Problem -> [Ast] -> IO ()
 makeGuess _ [] = fail "I have no idea!"
@@ -83,10 +83,7 @@ data TrainOrProblem = DoTrain | DoProblem
 
 readInfo :: TrainOrProblem -> Int -> String -> IO Problem
 readInfo which sz ident =
-  do let dir = case which of
-           DoTrain -> "trainings/" ++ show sz ++ "/" ++ ident
-           DoProblem -> "trainings/" ++ show sz ++ "/" ++ ident
-         prob = Problem {
+  do let prob = Problem {
            problemkind = which,
            problemid = ident,
            problemsize = sz,
@@ -96,16 +93,16 @@ readInfo which sz ident =
      alreadydone <- doesFileExist (problemDir prob ++ "solved")
      return prob { operators = toOperatorSet $ read ops, solved = alreadydone }
 
-main = do args0 <- getArgs
-          let (todo, args) =
-                if length args0 == 3
-                then case head args0 of
-                       "time" -> ("time", tail args0)
-                       "count-programs" -> ("count-programs", tail args0)
-                else ("", args0)
-              [nstr,i] = if length args == 2 then args else ["5", "VOG68zQWPy4L1Vu8hginHq02"]
+main = do nstr:i:args <- getArgs
+          let todo = case args of
+                [] -> ""
+                _ | "time" `elem` args -> "time"
+                  | "count-programs" `elem` args -> "time"
+              kind = if "problem" `elem` args
+                     then DoProblem
+                     else DoTrain
               n = read nstr
-          tr <- readInfo DoTrain n i
+          tr <- readInfo kind n i
           if solved tr then putStrLn "It is already solved!" else return ()
           putStrLn $ show tr
           start <- timeMe "File IO" 0
