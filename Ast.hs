@@ -4,7 +4,7 @@ import Numeric ( showHex )
 import Data.Tuple ( swap )
 import Data.Word ( Word8, Word16, Word64 )
 import Data.Bits ( Bits(..) )
-import qualified Data.Map as Map
+import qualified Data.Map.Strict as Map
 import System.Random
 
 import Data.Array.Unboxed ( UArray, listArray, amap )
