@@ -340,7 +340,7 @@ solver :: Int -> OperatorSet -> ([Word64], Map.Map [Word64] [Ast])
 solver sz ops = (guesses, mp)
   where mp = Map.fromListWith (++) assoc_list
         assoc_list = map (\a -> (map (\x -> eval a x 0 0) guesses , [a])) args
-        args = enumerate sz ops ops
+        args = enumerate_program sz ops
 
 niceHex :: Word64 -> String
 niceHex x = "0x" ++ replicate (16 - length nonzero) '0' ++ nonzero
