@@ -61,28 +61,33 @@ submitGuess ident p =
                      case readJSON valstr of
                        Ok (a,b,c) -> return (Just (read a, read b, read c))
 
-makeGuess :: String -> [Ast] -> IO ()
-makeGuess _ [] = fail "I have no idea!"
-makeGuess ident (b:bs) =
+newtype Dir = Dir String
+writeFileToDir :: Dir -> String -> String -> IO ()
+writeFileToDir (Dir d) f contents = writeFile (d ++ "/" ++ f) contents
+
+makeGuess :: Dir -> String -> [Ast] -> IO ()
+makeGuess _ _ [] = fail "I have no idea!"
+makeGuess dir ident (b:bs) =
   do r <- submitGuess ident b
      case r of
-       Nothing -> putStrLn "We won, we won!!!"
+       Nothing -> do putStrLn "We won, we won!!!"
+                     writeFileToDir dir "solved" "solved\n"
        Just (inp, out, _) ->
          do putStrLn $ "I could do better on " ++ niceHex inp
-            makeGuess ident (filter (\p -> eval p inp == out) bs)
+            makeGuess dir ident (filter (\p -> eval p inp == out) bs)
 
-readTrain :: Int -> String -> IO Problem
+readTrain :: Int -> String -> IO (Dir, Problem)
 readTrain sz ident =
   do let dir = "trainings/" ++ show sz ++ "/" ++ ident
      let opsname = dir ++ "/operators"
      ops <- readFile opsname
      alreadydone <- doesFileExist (dir ++ "/solved")
-     return Problem {
-       problemid = ident,
-       problemsize = sz,
-       operators = toOperatorSet $ read ops,
-       solved = alreadydone
-       }
+     return (Dir dir,
+             Problem {
+               problemid = ident,
+               problemsize = sz,
+               operators = toOperatorSet $ read ops,
+               solved = alreadydone })
 
 timeMe :: String -> Integer -> IO Integer
 timeMe job start =
@@ -113,7 +118,8 @@ main = do args0 <- getArgs
                 else ("", args0)
               [nstr,i] = if length args == 2 then args else ["5", "VOG68zQWPy4L1Vu8hginHq02"]
               n = read nstr
-          tr <- readTrain n i
+          (dir, tr) <- readTrain n i
+          if solved tr then putStrLn "It is already solved!" else return ()
           putStrLn $ show tr
           start <- timeMe "File IO" 0
           case todo of
@@ -133,4 +139,4 @@ main = do args0 <- getArgs
             _ -> return ()
           a <- submitEval i guesses
           let programs = enumerate_program (problemsize tr) (operators tr)
-          makeGuess i $ filter (\p -> map (eval p) guesses == a) programs
+          makeGuess dir i $ filter (\p -> map (eval p) guesses == a) programs
