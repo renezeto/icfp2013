@@ -111,18 +111,17 @@ enumerate 4 musthave mayhave
     case distinctOperators $ intersection musthave ops_binary of
         [myop] -> apply_single_binary myop (enumerate 2 (musthave `difference` myop) mayhave)
         _ -> []
-  | musthave `overlapsWith` ops_unary =
+  | length (distinctOperators (intersection musthave ops_unary)) > 1 =
       case distinctOperators $ intersection musthave ops_unary of
-        [myop] -> apply_single_unary myop (enumerate 3 (musthave `difference` myop) mayhave)
         [op1,op2] -> trace ("got here args" ++ show args) apply_single_unary op1 (apply_single_unary op2 args) ++
                      apply_single_unary op2 (apply_single_unary op1 args)
           where args = enumerate 2 (musthave `difference` (union op1 op2)) mayhave
         _ -> []
-  | otherwise = (concatMap binary_asts binaries) ++ (concatMap unary_asts unaries)
+  | otherwise = (concatMap binary_asts binaries) ++ trace ("unaries are" ++ show unaries) (concatMap unary_asts unaries)
       where binaries = filter (overlapsWith ops_binary) $ distinctOperators mayhave
             binary_asts myop = apply_single_binary myop (enumerate 2 musthave mayhave)
             unaries = filter (overlapsWith ops_unary) $ distinctOperators mayhave
-            unary_asts myop = apply_single_unary myop (enumerate 3 musthave mayhave)
+            unary_asts myop = apply_single_unary myop (enumerate 3 (musthave `difference` myop) mayhave)
 
 enumerate n musthave mayhave
   | minimum_size musthave > n = []
