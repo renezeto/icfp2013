@@ -62,4 +62,5 @@ main = do args <- getArgs
             Nothing -> fail "This is impossible!"
             Just [] -> fail "coudn't happen"
             Just [p] -> putStrLn $ lispify p
-            Just ps -> putStrLn $ "Could be one of " ++ show (length ps)
+            Just ps -> do putStrLn $ "Could be one of " ++ show (length ps)
+                          putStrLn $ unlines $ map lispify ps
