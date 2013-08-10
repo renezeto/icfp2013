@@ -61,7 +61,7 @@ eval (Plus e1 e2) x y z = (eval e1 x y z) + (eval e2 x y z)
 
 
 
--- size: off by 1
+-- size:
 
 sizeInternal :: Ast -> Int
 sizeInternal Zero = 1
@@ -130,36 +130,39 @@ enumerate_expression n musthave mayhave
   | minimum_size musthave > n = []
   | otherwise = unary_tree ++ binary_tree ++ if_tree ++ fold_tree
   where
-    fold_tree = [Fold e1 e2 e3 |
+    fold_tree = [ Fold e1 e2 e3 |
                  i <- [1..(n-2-2)],
                  j <- [1..(n-2-i-1)],
-                 e1 <- enumerate_expression i fold_must fold_may,
+                 e1 <- enumerate_expression i empty fold_may,
                  let e1_ops = find_ast_ops e1,
-                 e2 <- enumerate_expression j (fold_must `difference` e1_ops) fold_may,
+                 e2 <- enumerate_expression j empty fold_may,
                  let e2_ops = find_ast_ops e2,
                  e3 <- enumerate_expression (n-2-i-j)
                        (fold_must `difference` (e1_ops `union` e2_ops))
-                       (fold_may `union` op_yz)]
+                       (fold_may `union` op_yz) ]
       where fold_must = musthave `difference` op_fold
             fold_may = mayhave `difference` op_fold
 
-    if_tree = [If0 e1 e2 e3 |
+    if_tree = [ If0 e1 e2 e3 |
                i <- [1..(n-1-2)],
                j <- [1..(n-1-i-1)],
-               e1 <- enumerate_expression i (musthave `difference` op_if) mayhave,
+               e1 <- enumerate_expression i empty mayhave,
                let e1_ops = find_ast_ops e1,
-               e2 <- enumerate_expression j (musthave `difference` (e1_ops `union` op_if)) mayhave,
+               e2 <- enumerate_expression j empty mayhave,
                let e2_ops = find_ast_ops e2,
-               e3 <- enumerate_expression (n-1-i-j) (musthave `difference` (e1_ops `union` (e2_ops `union` op_if))) mayhave]
-    binary_tree = [apply_binary myop e1 e2 |
+               e3 <- enumerate_expression (n-1-i-j)
+                     (musthave `difference` (e1_ops `union` (e2_ops `union` op_if))) mayhave ]
+    binary_tree = [ apply_binary myop e1 e2 |
                 i <- [1..((n-1)`div`2)],
                 myop <- filter (overlapsWith ops_binary) $ distinctOperators mayhave,
-                e1 <- enumerate_expression i (musthave `difference` myop) mayhave,
+                e1 <- enumerate_expression i empty mayhave,
                 let e1_ops = find_ast_ops e1,
-                e2 <- enumerate_expression (n-1-i) (musthave `difference` (union e1_ops myop)) mayhave]
+                e2 <- enumerate_expression (n-1-i)
+                      (musthave `difference` (union e1_ops myop)) mayhave]
     unary_tree = [apply_unary myop e1 |
                   myop <- filter (overlapsWith ops_unary) $ distinctOperators mayhave,
-                  e1 <- enumerate_expression (n-1) (musthave `difference` myop) mayhave]
+                  e1 <- enumerate_expression (n-1)
+                        (musthave `difference` myop) mayhave ]
 
 minimum_size :: OperatorSet -> Int
 minimum_size o = 1 + (fromEnum $ o `overlapsWith` op_not)
