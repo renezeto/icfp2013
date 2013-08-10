@@ -67,7 +67,7 @@ makeGuess ident (b:bs) =
        Nothing -> putStrLn "We won, we won!!!"
        Just (inp, out, _) ->
          do putStrLn $ "I could do better on " ++ niceHex inp
-            makeGuess ident (filter (\p -> eval p inp 0 0 == out) bs)
+            makeGuess ident (filter (\p -> eval p inp == out) bs)
 
 readTrain :: Int -> String -> IO Problem
 readTrain sz ident =
@@ -100,19 +100,25 @@ main = do args0 <- getArgs
           tr <- readTrain n i
           putStrLn $ show tr
           start <- timeMe "File IO" 0
-          putStrLn $ "I count " ++ show (length $ enumerate_program (problemsize tr) (operators tr)) 
-            ++ " programs"
+          let nprograms = length $ enumerate_program (problemsize tr) (operators tr)
+          putStrLn $ "I count " ++ show nprograms ++ " programs"
+          let memoryuse = fromIntegral (length guesses) * fromIntegral nprograms * 8/1024.0/1024.0/1024.0
+          putStrLn $ "This means we require " ++ show memoryuse ++ " gigabytes for output"
           start <- timeMe "Generating programs" start
           if enumerateonly then exitSuccess
                            else return ()
           putStrLn $ "I count " ++ show (length guesses) ++ " guesses"
           start <- timeMe "Generating guesses" start
+          let (_, ma) = solver_array (problemsize tr) (operators tr)
+          putStrLn $ "number programs is " ++ show (length $ concat $ Map.elems ma)
+          putStrLn $ "number distinguished outputs is " ++ show (length $ Map.elems ma)
+          start <- timeMe "solver_array" start
           let (g, m) = solver (problemsize tr) (operators tr)
           putStrLn $ "minsize is " ++ show (minimum_size (operators tr))
           putStrLn $ "problem size is " ++ show (problemsize tr)
           putStrLn $ "number programs is " ++ show (length $ concat $ Map.elems m)
           putStrLn $ "number distinguished outputs is " ++ show (length $ Map.elems m)
-          timeMe "solver" start
+          start <- timeMe "solver" start
           if timeonly then exitSuccess
                       else return ()
           a <- submitEval i g

@@ -7,6 +7,8 @@ import Data.Bits ( Bits(..) )
 import qualified Data.Map as Map
 import System.Random
 
+import Data.Array.Unboxed ( UArray, listArray, amap )
+
 import Debug.Trace
 
 data Ast = Zero | One | X | Y | Z
@@ -20,42 +22,45 @@ data OperatorSet = OS !Word16
 
 
 -- eval
-eval :: Ast -> Word64 -> Word64 -> Word64 -> Word64
-eval Zero _ _ _ = 0
-eval One _ _ _ = 1
-eval X x _ _ = x
-eval Y _ y _ = y
-eval Z _ _ z = z
-eval (If0 e a b) x y z
-  | eval e x y z == 0 = eval a x y z
-  | otherwise = eval b x y z
-eval (Fold e1 e2 e3) x _ _ = eval e3 x a8 b8
+eval :: Ast -> Word64 -> Word64
+eval f x = eval3 f x 0 0
+
+eval3 :: Ast -> Word64 -> Word64 -> Word64 -> Word64
+eval3 Zero _ _ _ = 0
+eval3 One _ _ _ = 1
+eval3 X x _ _ = x
+eval3 Y _ y _ = y
+eval3 Z _ _ z = z
+eval3 (If0 e a b) x y z
+  | eval3 e x y z == 0 = eval3 a x y z
+  | otherwise = eval3 b x y z
+eval3 (Fold e1 e2 e3) x _ _ = eval3 e3 x a8 b8
   where a8 = unsafeShiftR a 56 .&. 0xff
-        b8 = eval e3 x a7 b7
+        b8 = eval3 e3 x a7 b7
         a7 = unsafeShiftR a 48 .&. 0xff
-        b7 = eval e3 x a6 b6
+        b7 = eval3 e3 x a6 b6
         a6 = unsafeShiftR a 40 .&. 0xff
-        b6 = eval e3 x a5 b5
+        b6 = eval3 e3 x a5 b5
         a5 = unsafeShiftR a 32 .&. 0xff
-        b5 = eval e3 x a4 b4
+        b5 = eval3 e3 x a4 b4
         a4 = unsafeShiftR a 24 .&. 0xff
-        b4 = eval e3 x a3 b3
+        b4 = eval3 e3 x a3 b3
         a3 = unsafeShiftR a 16 .&. 0xff
-        b3 = eval e3 x a2 b2
+        b3 = eval3 e3 x a2 b2
         a2 = unsafeShiftR a 8 .&. 0xff
-        b2 = eval e3 x a1 b1
+        b2 = eval3 e3 x a1 b1
         a1 = a .&. 0xff
-        b1 = eval e2 x 0 0
-        a = eval e1 x 0 0
-eval (Not e) x y z = complement (eval e x y z)
-eval (Shl1 e) x y z = unsafeShiftL (eval e x y z) 1
-eval (Shr1 e) x y z = unsafeShiftR (eval e x y z) 1
-eval (Shr4 e) x y z = unsafeShiftR (eval e x y z) 4
-eval (Shr16 e) x y z = unsafeShiftR (eval e x y z) 16
-eval (And e1 e2) x y z = (eval e1 x y z) .&. (eval e2 x y z)
-eval (Or e1 e2) x y z = (eval e1 x y z) .|. (eval e2 x y z)
-eval (Xor e1 e2) x y z = (eval e1 x y z) `xor` (eval e2 x y z)
-eval (Plus e1 e2) x y z = (eval e1 x y z) + (eval e2 x y z)
+        b1 = eval3 e2 x 0 0
+        a = eval3 e1 x 0 0
+eval3 (Not e) x y z = complement (eval3 e x y z)
+eval3 (Shl1 e) x y z = unsafeShiftL (eval3 e x y z) 1
+eval3 (Shr1 e) x y z = unsafeShiftR (eval3 e x y z) 1
+eval3 (Shr4 e) x y z = unsafeShiftR (eval3 e x y z) 4
+eval3 (Shr16 e) x y z = unsafeShiftR (eval3 e x y z) 16
+eval3 (And e1 e2) x y z = (eval3 e1 x y z) .&. (eval3 e2 x y z)
+eval3 (Or e1 e2) x y z = (eval3 e1 x y z) .|. (eval3 e2 x y z)
+eval3 (Xor e1 e2) x y z = (eval3 e1 x y z) `xor` (eval3 e2 x y z)
+eval3 (Plus e1 e2) x y z = (eval3 e1 x y z) + (eval3 e2 x y z)
 
 
 
@@ -335,14 +340,26 @@ randoms64 :: [Word64]
 randoms64 = randoms (mkStdGen 0)
 
 guesses :: [Word64]
-guesses = take 256 $ [0, 3, 5, 6, 0xffffffffffffffff] ++
+guesses = take 200 $ [0, 3, 5, 6, 0xffffffffffffffff] ++
           map (\x -> unsafeShiftL 1 x) [0..63] ++
           map (\x -> complement (unsafeShiftL 1 x)) [0..63] ++ randoms64
+
+betterguesses :: UArray Int Word64
+betterguesses = listArray (0,length(guesses)-1) guesses
+
+eval_array :: Ast -> UArray Int Word64 -> UArray Int Word64
+eval_array f = amap (eval f)
 
 solver :: Int -> OperatorSet -> ([Word64], Map.Map [Word64] [Ast])
 solver sz ops = (guesses, mp)
   where mp = Map.fromListWith (++) assoc_list
-        assoc_list = map (\a -> (map (\x -> eval a x 0 0) guesses , [a])) args
+        assoc_list = map (\a -> (map (eval a) guesses , [a])) args
+        args = enumerate_program sz ops
+
+solver_array :: Int -> OperatorSet -> (UArray Int Word64, Map.Map (UArray Int Word64) [Ast])
+solver_array sz ops = (betterguesses, mp)
+  where mp = Map.fromListWith (++) assoc_list
+        assoc_list = map (\a -> (amap (eval a) betterguesses , [a])) args
         args = enumerate_program sz ops
 
 niceHex :: Word64 -> String
