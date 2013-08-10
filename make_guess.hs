@@ -4,6 +4,7 @@ import Data.Word ( Word64 )
 import System.Exit ( exitSuccess )
 import System.CPUTime ( getCPUTime )
 import System.Random
+import Control.Concurrent ( threadDelay )
 
 import Ast
 import Network.HTTP
@@ -13,11 +14,18 @@ import System.Environment ( getArgs )
 
 url path = "http://icfpc2013.cloudapp.net/" ++ path ++ "?auth=0175jv6XdpWdKm9pYxVcBgmSMCIlP4aVxQxZ3PqOvpsH1H"
 
+getdata :: String -> String -> IO String
 getdata path body = do if length body < 128
                          then putStrLn ("body is:\n" ++ body)
                          else putStrLn ("body length is: " ++ show (length body))
                        a <- simpleHTTP (postRequestWithBody (url path) "text/text" body)
-                       getResponseBody a
+                       response <- getResponseBody a
+                       if take (length "Too many requests") response == "Too many requests"
+                         then do putStrLn response
+                                 putStrLn "Too many requests! (trying again)"
+                                 threadDelay 5000000 -- five seconds
+                                 getdata path body
+                         else return response
 
 data Problem = Problem {
   problemkind :: TrainOrProblem,
@@ -29,8 +37,8 @@ data Problem = Problem {
              deriving ( Show )
 
 submitEval :: Problem -> [Word64] -> IO [Word64]
-submitEval ident g =
-  do d <- getdata "eval" ("{\"id\":" ++ show ident ++ ",\"arguments\":" ++ hexes g ++ "}")
+submitEval p g =
+  do d <- getdata "eval" ("{\"id\":" ++ show (problemid p) ++ ",\"arguments\":" ++ hexes g ++ "}")
      if length d < 128
        then putStrLn $ "Response was: " ++ d
        else putStrLn $ "Response was length " ++ show (length d)
@@ -43,8 +51,8 @@ submitEval ident g =
                   return $ pars a
 
 submitGuess :: Problem -> Ast -> IO (Maybe (Word64, Word64, Word64))
-submitGuess ident p =
-  do d <- getdata "guess" ("{\"id\":" ++ show ident ++ ",\"program\":" ++ show (lispify p) ++ "}")
+submitGuess prob p =
+  do d <- getdata "guess" ("{\"id\":" ++ show (problemid prob) ++ ",\"program\":" ++ show (lispify p) ++ "}")
      putStrLn d
      case decode d of
        Error e -> fail $ "submitGuess error " ++ e
@@ -120,10 +128,11 @@ main = do nstr:i:args <- getArgs
                     printNumber (length programs)
                     start <- timeMe "Counting programs" start
                     exitSuccess
-            _ -> return ()
-          a <- submitEval tr guesses
-          let programs = enumerate_program (problemsize tr) (operators tr)
-          makeGuess tr $ filter (\p -> map (eval p) guesses == a) programs
+            "" -> do if solved tr then fail "We already solved it."
+                                  else return ()
+                     a <- submitEval tr guesses
+                     let programs = enumerate_program (problemsize tr) (operators tr)
+                     makeGuess tr $ filter (\p -> map (eval p) guesses == a) programs
 
 
 timeMe :: String -> Integer -> IO Integer
