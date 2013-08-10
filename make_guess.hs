@@ -4,6 +4,7 @@ import Data.Word ( Word64 )
 import qualified Data.Map as Map
 import System.Exit ( exitSuccess )
 import System.CPUTime ( getCPUTime )
+import System.Random
 
 import Ast
 import Network.HTTP
@@ -100,7 +101,8 @@ main = do args0 <- getArgs
           tr <- readTrain n i
           putStrLn $ show tr
           start <- timeMe "File IO" 0
-          let nprograms = length $ enumerate_program (problemsize tr) (operators tr)
+          let programs = enumerate_program (problemsize tr) (operators tr)
+              nprograms = length programs
           putStrLn $ "I count " ++ show nprograms ++ " programs"
           if nprograms > 1024*1024*1024
             then putStrLn $ "I count " ++
@@ -124,6 +126,15 @@ main = do args0 <- getArgs
           putStrLn $ "This means we require " ++ show maxmemoryuse ++ " gigabytes for output"
           putStrLn $ "The best size of guesses is " ++ show bestsize
           start <- timeMe "Generating programs" start
+          let idprograms = filter issame programs
+              issame p = map (eval p) guesses == guesses
+          putStrLn $ "This involves " ++ show (length idprograms) ++ " identity programs"
+          start <- timeMe "Filtering identity programs" start
+          let rndprograms = filter isrnd programs
+              isrnd p = map (eval p) guesses == rndout
+              rndout = take (length guesses) $ randoms (mkStdGen 1)
+          putStrLn $ "This involves " ++ show (length rndprograms) ++ " programs matching randoms"
+          start <- timeMe "Filtering random programs" start
           if enumerateonly then exitSuccess
                            else return ()
           let (_, ma) = solver_array bestsize (problemsize tr) (operators tr)

@@ -17,13 +17,48 @@ data Ast = Zero | One | X | Y | Z
          | And Ast Ast | Or Ast Ast | Xor Ast Ast | Plus Ast Ast
          deriving ( Read, Show, Eq, Ord )
 
-data OperatorSet = OS !Word16
+newtype OperatorSet = OS Word16
                  deriving ( Eq )
 
 
 -- eval
 eval :: Ast -> Word64 -> Word64
-eval f x = eval3 f x 0 0
+eval Zero _ = 0
+eval One _ = 1
+eval X x = x
+eval Y _ = 0
+eval Z _ = 0
+eval (If0 e a b) x
+  | eval e x == 0 = eval a x
+  | otherwise = eval b x
+eval (Fold e1 e2 e3) x = eval3 e3 x a8 b8
+  where a8 = unsafeShiftR a 56 .&. 0xff
+        b8 = eval3 e3 x a7 b7
+        a7 = unsafeShiftR a 48 .&. 0xff
+        b7 = eval3 e3 x a6 b6
+        a6 = unsafeShiftR a 40 .&. 0xff
+        b6 = eval3 e3 x a5 b5
+        a5 = unsafeShiftR a 32 .&. 0xff
+        b5 = eval3 e3 x a4 b4
+        a4 = unsafeShiftR a 24 .&. 0xff
+        b4 = eval3 e3 x a3 b3
+        a3 = unsafeShiftR a 16 .&. 0xff
+        b3 = eval3 e3 x a2 b2
+        a2 = unsafeShiftR a 8 .&. 0xff
+        b2 = eval3 e3 x a1 b1
+        a1 = a .&. 0xff
+        b1 = eval e2 x
+        a = eval e1 x
+eval (Not e) x = complement (eval e x)
+eval (Shl1 e) x = unsafeShiftL (eval e x) 1
+eval (Shr1 e) x = unsafeShiftR (eval e x) 1
+eval (Shr4 e) x = unsafeShiftR (eval e x) 4
+eval (Shr16 e) x = unsafeShiftR (eval e x) 16
+eval (And e1 e2) x = (eval e1 x) .&. (eval e2 x)
+eval (Or e1 e2) x = (eval e1 x) .|. (eval e2 x)
+eval (Xor e1 e2) x = (eval e1 x) `xor` (eval e2 x)
+eval (Plus e1 e2) x = (eval e1 x) + (eval e2 x)
+
 
 eval3 :: Ast -> Word64 -> Word64 -> Word64 -> Word64
 eval3 Zero _ _ _ = 0
