@@ -13,7 +13,9 @@ import System.Environment ( getArgs )
 
 url path = "http://icfpc2013.cloudapp.net/" ++ path ++ "?auth=0175jv6XdpWdKm9pYxVcBgmSMCIlP4aVxQxZ3PqOvpsH1H"
 
-getdata path body = do putStrLn ("body is:\n" ++ body)
+getdata path body = do if length body < 128
+                         then putStrLn ("body is:\n" ++ body)
+                         else putStrLn ("body length is: " ++ show (length body))
                        a <- simpleHTTP (postRequestWithBody (url path) "text/text" body)
                        getResponseBody a
 
@@ -86,6 +88,20 @@ timeMe job start =
      putStrLn $ job ++ " took " ++ show (fromIntegral (stop-start)/1.0e12 :: Double) ++ " seconds"
      getCPUTime
 
+printNumber :: Int -> IO ()
+printNumber nprograms =
+  if nprograms > 1024*1024*1024
+  then putStrLn $ "I count " ++
+       show (round $ fromIntegral nprograms/1024.0/1024.0/1024.0) ++ " gigaprograms"
+  else if nprograms > 1024*1024
+       then putStrLn $ "I count " ++
+            show (round $ fromIntegral nprograms/1024.0/1024.0) ++ " megaprograms"
+       else if nprograms > 1024
+            then putStrLn $ "I count " ++
+                 show (round $ fromIntegral nprograms/1024.0) ++ " kiloprograms"
+            else putStrLn $ "I count " ++
+                 show (round $ fromIntegral nprograms) ++ " programs"
+
 main = do args0 <- getArgs
           let (timeonly, args) =
                 if length args0 == 3
@@ -99,40 +115,20 @@ main = do args0 <- getArgs
           start <- timeMe "File IO" 0
           let programs = enumerate_program (problemsize tr) (operators tr)
               nprograms = length programs
-          putStrLn $ "I count " ++ show nprograms ++ " programs"
-          if nprograms > 1024*1024*1024
-            then putStrLn $ "I count " ++
-                 show (round $ fromIntegral nprograms/1024.0/1024.0/1024.0) ++ " gigaprograms"
-            else if nprograms > 1024*1024
-                 then putStrLn $ "I count " ++
-                      show (round $ fromIntegral nprograms/1024.0/1024.0) ++ " megaprograms"
-                 else if nprograms > 1024
-                      then putStrLn $ "I count " ++
-                           show (round $ fromIntegral nprograms/1024.0) ++ " kiloprograms"
-                      else putStrLn $ "I count " ++
-                           show (round $ fromIntegral nprograms) ++ " programs"
-          let maxmemoryuse = 256 * fromIntegral nprograms * 8/1024.0/1024.0/1024.0
-              memorygoal = 0.5 -- gigabytes
-              scaledsize = floor $ memorygoal/maxmemoryuse*256
-              bestsize = if maxmemoryuse > memorygoal
-                         then if scaledsize < 1
-                              then 1
-                              else scaledsize
-                         else 256
-          putStrLn $ "This means we require " ++ show maxmemoryuse ++ " gigabytes for output"
-          putStrLn $ "The best size of guesses is " ++ show bestsize
-          start <- timeMe "Generating programs" start
-          let idprograms = filter issame programs
-              issame p = map (eval p) guesses == guesses
-          putStrLn $ "This involves " ++ show (length idprograms) ++ " identity programs"
-          start <- timeMe "Filtering identity programs" start
-          let rndprograms = filter isrnd programs
-              isrnd p = map (eval p) guesses == rndout
-              rndout = take (length guesses) $ randoms (mkStdGen 1)
-          putStrLn $ "This involves " ++ show (length rndprograms) ++ " programs matching randoms"
-          start <- timeMe "Filtering random programs" start
-          if timeonly then exitSuccess
-                      else return ()
+          if timeonly
+            then do printNumber nprograms
+                    start <- timeMe "Generating programs" start
+                    let idprograms = filter issame programs
+                        issame p = map (eval p) guesses == guesses
+                    putStrLn $ "This involves " ++ show (length idprograms) ++ " identity programs"
+                    start <- timeMe "Filtering identity programs" start
+                    let rndprograms = filter isrnd programs
+                        isrnd p = map (eval p) guesses == rndout
+                        rndout = take (length guesses) $ randoms (mkStdGen 1)
+                    putStrLn $ "This involves " ++ show (length rndprograms) ++ " programs matching randoms"
+                    start <- timeMe "Filtering random programs" start
+                    exitSuccess
+            else return ()
           a <- submitEval i guesses
           makeGuess i $ filter (\p -> map (eval p) guesses == a) programs
 
