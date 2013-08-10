@@ -76,9 +76,13 @@ makeGuess dir ident (b:bs) =
          do putStrLn $ "I could do better on " ++ niceHex inp
             makeGuess dir ident (filter (\p -> eval p inp == out) bs)
 
-readTrain :: Int -> String -> IO (Dir, Problem)
-readTrain sz ident =
-  do let dir = "trainings/" ++ show sz ++ "/" ++ ident
+data TrainOrProblem = DoTrain | DoProblem
+
+readInfo :: TrainOrProblem -> Int -> String -> IO (Dir, Problem)
+readInfo which sz ident =
+  do let dir = case which of
+           DoTrain -> "trainings/" ++ show sz ++ "/" ++ ident
+           DoProblem -> "trainings/" ++ show sz ++ "/" ++ ident
      let opsname = dir ++ "/operators"
      ops <- readFile opsname
      alreadydone <- doesFileExist (dir ++ "/solved")
@@ -89,26 +93,6 @@ readTrain sz ident =
                operators = toOperatorSet $ read ops,
                solved = alreadydone })
 
-timeMe :: String -> Integer -> IO Integer
-timeMe job start =
-  do stop <- getCPUTime
-     putStrLn $ job ++ " took " ++ show (fromIntegral (stop-start)/1.0e12 :: Double) ++ " seconds"
-     getCPUTime
-
-printNumber :: Int -> IO ()
-printNumber nprograms =
-  if nprograms > 1024*1024*1024
-  then putStrLn $ "I count " ++
-       show (round $ fromIntegral nprograms/1024.0/1024.0/1024.0) ++ " gigaprograms"
-  else if nprograms > 1024*1024
-       then putStrLn $ "I count " ++
-            show (round $ fromIntegral nprograms/1024.0/1024.0) ++ " megaprograms"
-       else if nprograms > 1024
-            then putStrLn $ "I count " ++
-                 show (round $ fromIntegral nprograms/1024.0) ++ " kiloprograms"
-            else putStrLn $ "I count " ++
-                 show (round $ fromIntegral nprograms) ++ " programs"
-
 main = do args0 <- getArgs
           let (todo, args) =
                 if length args0 == 3
@@ -118,7 +102,7 @@ main = do args0 <- getArgs
                 else ("", args0)
               [nstr,i] = if length args == 2 then args else ["5", "VOG68zQWPy4L1Vu8hginHq02"]
               n = read nstr
-          (dir, tr) <- readTrain n i
+          (dir, tr) <- readInfo DoTrain n i
           if solved tr then putStrLn "It is already solved!" else return ()
           putStrLn $ show tr
           start <- timeMe "File IO" 0
@@ -140,3 +124,24 @@ main = do args0 <- getArgs
           a <- submitEval i guesses
           let programs = enumerate_program (problemsize tr) (operators tr)
           makeGuess dir i $ filter (\p -> map (eval p) guesses == a) programs
+
+
+timeMe :: String -> Integer -> IO Integer
+timeMe job start =
+  do stop <- getCPUTime
+     putStrLn $ job ++ " took " ++ show (fromIntegral (stop-start)/1.0e12 :: Double) ++ " seconds"
+     getCPUTime
+
+printNumber :: Int -> IO ()
+printNumber nprograms =
+  if nprograms > 1024*1024*1024
+  then putStrLn $ "I count " ++
+       show (round $ fromIntegral nprograms/1024.0/1024.0/1024.0) ++ " gigaprograms"
+  else if nprograms > 1024*1024
+       then putStrLn $ "I count " ++
+            show (round $ fromIntegral nprograms/1024.0/1024.0) ++ " megaprograms"
+       else if nprograms > 1024
+            then putStrLn $ "I count " ++
+                 show (round $ fromIntegral nprograms/1024.0) ++ " kiloprograms"
+            else putStrLn $ "I count " ++
+                 show (round $ fromIntegral nprograms) ++ " programs"
