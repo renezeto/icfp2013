@@ -145,20 +145,20 @@ enumerate_expression n musthave mayhave
 
     if_tree = [ If0 e1 e2 e3 |
                i <- [1..(n-1-2)],
-               j <- [1..(n-1-i-1)],
                e1 <- enumerate_expression i empty mayhave,
                let e1_ops = find_ast_ops e1,
+               j <- [1..(n-1-i-1)],
                e2 <- enumerate_expression j empty mayhave,
                let e2_ops = find_ast_ops e2,
                e3 <- enumerate_expression (n-1-i-j)
                      (musthave `difference` (e1_ops `union` (e2_ops `union` op_if))) mayhave ]
     binary_tree = [ apply_binary myop e1 e2 |
-                i <- [1..((n-1)`div`2)],
-                myop <- filter (overlapsWith ops_binary) $ distinctOperators mayhave,
-                e1 <- enumerate_expression i empty mayhave,
-                let e1_ops = find_ast_ops e1,
-                e2 <- enumerate_expression (n-1-i)
-                      (musthave `difference` (union e1_ops myop)) mayhave]
+                    i <- [1..((n-1)`div`2)],
+                    myop <- filter (overlapsWith ops_binary) $ distinctOperators mayhave,
+                    e1 <- enumerate_expression i empty mayhave,
+                    let e1_ops = find_ast_ops e1,
+                    e2 <- enumerate_expression (n-1-i)
+                          (musthave `difference` (union e1_ops myop)) mayhave]
     unary_tree = [apply_unary myop e1 |
                   myop <- filter (overlapsWith ops_unary) $ distinctOperators mayhave,
                   e1 <- enumerate_expression (n-1)
