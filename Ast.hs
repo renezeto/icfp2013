@@ -2,6 +2,7 @@ module Ast where
 
 import Numeric ( showHex )
 import Data.Tuple ( swap )
+import Data.List ( nub )
 import Data.Word ( Word8, Word16, Word64 )
 import Data.Bits ( Bits(..) )
 import qualified Data.Map as Map
@@ -125,38 +126,29 @@ enumerate 4 musthave mayhave
 
 enumerate n musthave mayhave
   | minimum_size musthave > n = []
-  | otherwise = fold_asts ++ if_asts ++ (concatMap binary_asts binaries) ++ (concatMap unary_asts unaries)
+  | otherwise = (concatMap unary_asts unaries) ++ binary_tree -- ++ fold_asts ++ if_asts
   where
-    fold_asts = if mayhave `overlapsWith` op_fold then
-                  concat [apply_fold (enumerate i fold_musthave fold_mayhave)
-                          (enumerate j fold_musthave fold_mayhave)
-                          (enumerate (n-2-i-j) fold_musthave fold_mayhave)
-                         | i <- [1..n-4], j <- [1..n-3-i]]
-                else []
-    fold_musthave = musthave `difference` op_fold
-    fold_mayhave = mayhave `difference` op_fold `union` op_yz
-    if_asts = if mayhave `overlapsWith` op_if then
-                concat [apply_if (enumerate i if_musthave mayhave)
-                        (enumerate j if_musthave mayhave)
-                        (enumerate (n-1-i-j) if_musthave mayhave)
-                       | i <- [1..n-3], j <- [1..n-2-i]]
-              else []
-    if_musthave = musthave `difference` op_if
-
-
-
-    binaries = filter (overlapsWith ops_binary) $ distinctOperators mayhave
-    binary_asts myop = concat [apply_binary myop (enumerate i (musthave `difference` myop) mayhave)
-                               (enumerate (n-1-i) (musthave `difference` myop) mayhave)
-                              | i <- [1..(n-1)`div`2]]
-
-
-    -- binaries = filter (overlapsWith ops_binary) $ distinctOperators mayhave
-    -- binary_asts myop = concat [apply_binary myop (enumerate i (musthave `difference` myop) mayhave)
-    --                            (enumerate (n-1-i) (musthave `difference` myop) mayhave)
-    --                           | i <- [1..(n-1)`div`2]]
-
-
+  --   fold_asts = if mayhave `overlapsWith` op_fold then
+  --                 concat [apply_fold (enumerate i fold_musthave fold_mayhave)
+  --                         (enumerate j fold_musthave fold_mayhave)
+  --                         (enumerate (n-2-i-j) fold_musthave fold_mayhave)
+  --                        | i <- [1..n-4], j <- [1..n-3-i]]
+  --               else []
+  --   fold_musthave = musthave `difference` op_fold
+  --   fold_mayhave = mayhave `difference` op_fold `union` op_yz
+  --   if_asts = if mayhave `overlapsWith` op_if then
+  --               concat [apply_if (enumerate i if_musthave mayhave)
+  --                       (enumerate j if_musthave mayhave)
+  --                       (enumerate (n-1-i-j) if_musthave mayhave)
+  --                      | i <- [1..n-3], j <- [1..n-2-i]]
+  --             else []
+  --   if_musthave = musthave `difference` op_if
+    binary_tree = [apply_binary myop e1 e2 |
+                i <- [2..n`div`2],
+                myop <- filter (overlapsWith ops_binary) $ distinctOperators mayhave,
+                e1 <- enumerate i (musthave `difference` myop) mayhave,
+                let e1_ops = find_ast_ops e1,
+                e2 <- enumerate (n-i) (musthave `difference` (union e1_ops myop)) mayhave]
 
     unaries = filter (overlapsWith ops_unary) $ distinctOperators mayhave
     unary_asts myop = apply_single_unary myop (enumerate (n-1) (musthave `difference` myop) mayhave)
@@ -181,13 +173,13 @@ apply_if xs ys zs = [If0 a b c | a <- xs, b <- ys, c <- zs]
 apply_fold :: [Ast] -> [Ast] -> [Ast] -> [Ast]
 apply_fold xs ys zs = [Fold a b c | a <- xs, b <- ys, c <- zs]
 
-apply_binary :: OperatorSet -> [Ast] -> [Ast] -> [Ast]
-apply_binary o xs ys
-  | o == op_plus = [Plus a b | a <- xs, b <- ys]
-  | o == op_or = [Or a b | a <- xs, b <- ys]
-  | o == op_xor = [Xor a b | a <- xs, b <- ys]
-  | o == op_and = [And a b | a <- xs, b <- ys]
-  | otherwise = []
+apply_binary :: OperatorSet -> Ast -> Ast -> Ast
+apply_binary o a b
+  | o == op_plus = Plus a b
+  | o == op_or = Or a b
+  | o == op_xor = Xor a b
+  | o == op_and = And a b
+  | otherwise = error "Binary expected"
 
 apply_single_binary :: OperatorSet -> [Ast] -> [Ast]
 apply_single_binary o xs
@@ -227,7 +219,7 @@ find_ast_ops _ = empty
 -- lisp output
 toLisp :: Ast -> String
 toLisp Zero = "0"
-toLisp One = "1" 
+toLisp One = "1"
 toLisp X = "x"
 toLisp Y = "y"
 toLisp Z = "z"

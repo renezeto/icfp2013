@@ -8,3 +8,5 @@ runit
 lookup_problems
 get_training
 make_guess
+pull_from_everyone.sh
+
