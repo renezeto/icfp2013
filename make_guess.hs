@@ -1,6 +1,7 @@
 module Main where
 
 import Data.Word ( Word64 )
+import qualified Data.Map as Map
 
 import Ast
 import Network.HTTP
@@ -47,7 +48,8 @@ readTrain sz ident =
        solved = alreadydone
        }
 
-main = do [nstr,i] <- getArgs
+main = do args <- getArgs
+          let [nstr,i] = if length args == 2 then args else ["5", "VOG68zQWPy4L1Vu8hginHq02"]
           let n = read nstr
           tr <- readTrain n i
           putStrLn $ show tr
@@ -55,3 +57,9 @@ main = do [nstr,i] <- getArgs
           a <- submitEval i g
           print a
           putStrLn $ hexes a
+          putStrLn $ show m
+          case Map.lookup a m of
+            Nothing -> fail "This is impossible!"
+            Just [] -> fail "coudn't happen"
+            Just [p] -> putStrLn $ lispify p
+            Just ps -> putStrLn $ "Could be one of " ++ show (length ps)
