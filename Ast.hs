@@ -171,17 +171,56 @@ enumerate_expression 3 musthave mayhave
       myop <- distinctOperators $ intersection mayhave ops_unary,
       e <- enumerate_expression 2 (musthave `difference` myop) mayhave ]
   | otherwise = -- musthave nothing
-      [ apply_unary myop e |
-        myop <- distinctOperators $ intersection mayhave ops_unary,
-        e <- enumerate_expression 2 (musthave `difference` myop) mayhave ] ++
-      [ apply_binary myop e1 e2 |
-        myop <- distinctOperators $ intersection mayhave ops_binary,
-        let asts = if (mayhave `overlapsWith` op_yz) then xyz10_asts else x10_asts,
-        let len = (length asts) - 1,
-        i <- [0..len],
-        j <- [i..len],
-        let e1 = asts!!i,
-        let e2 = asts!!j ]
+    [ apply_unary myop e |
+      myop <- distinctOperators $ intersection mayhave ops_unary,
+      e <- enumerate_expression 2 (musthave `difference` myop) mayhave ] ++
+    [ apply_binary myop e1 e2 |
+      myop <- distinctOperators $ intersection mayhave ops_binary,
+      let asts = if (mayhave `overlapsWith` op_yz) then xyz10_asts else x10_asts,
+      let len = (length asts) - 1,
+      i <- [0..len],
+      j <- [i..len],
+      let e1 = asts!!i,
+      let e2 = asts!!j ]
+  where minsize = minimum_size musthave
+
+enumerate_expression 4 musthave mayhave
+  | minsize > 4 = []
+  | musthave `overlapsWith` op_if =
+    [ If0 Zero e Zero |
+      e <- if (mayhave `overlapsWith` op_yz) then xyz10_asts else x10_asts ] ++
+    [ If0 e a b |
+      e <- if (mayhave `overlapsWith` op_yz) then [Z, Y, X] else [X],
+      let asts = if (mayhave `overlapsWith` op_yz) then xyz10_asts else x10_asts,
+      a <- asts,
+      b <- asts ]
+  | musthave `overlapsWith` ops_binary =
+    [ apply_binary myop e1 e2 |
+      myop <- distinctOperators $ intersection musthave ops_binary,
+      let asts = if (mayhave `overlapsWith` op_yz) then xyz10_asts else x10_asts,
+      e1 <- asts,
+      e2 <- enumerate_expression 2 (musthave `difference` myop) mayhave ] ++
+    [ apply_unary myop e |
+      let opset = if musthave `overlapsWith` ops_unary then musthave else mayhave,
+      myop <- distinctOperators $ intersection opset ops_unary,
+      e <- enumerate_expression 3 (musthave `difference` myop) mayhave ]
+  | minsize > 2 = -- musthave 2 unaries --> don't do any binaries
+    [ apply_unary myop e |
+      let distinctMusts = distinctOperators $ intersection musthave ops_unary,
+      let oplist = if (length distinctMusts) > 2
+                   then distinctMusts
+                   else distinctOperators $ intersection mayhave ops_unary,
+      myop <- oplist,
+      e <- enumerate_expression 3 (musthave `difference` myop) mayhave ]
+  | otherwise =
+    [ apply_unary myop e |
+      myop <- distinctOperators $ intersection mayhave ops_unary,
+      e <- enumerate_expression 3 (musthave `difference` myop) mayhave ] ++
+    [ apply_binary myop e1 e2 |
+      myop <- distinctOperators $ intersection mayhave ops_binary,
+      let asts = if (mayhave `overlapsWith` op_yz) then xyz10_asts else x10_asts,
+      e1 <- asts,
+      e2 <- enumerate_expression 2 (musthave `difference` myop) mayhave ]
   where minsize = minimum_size musthave
 
 enumerate_expression n musthave mayhave
