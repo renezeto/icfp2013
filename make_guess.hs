@@ -1,7 +1,6 @@
 module Main where
 
 import Data.Word ( Word64 )
-import qualified Data.Map as Map
 import System.Exit ( exitSuccess )
 import System.CPUTime ( getCPUTime )
 import System.Random
@@ -60,8 +59,6 @@ submitGuess ident p =
 
 makeGuess :: String -> [Ast] -> IO ()
 makeGuess _ [] = fail "I have no idea!"
-makeGuess ident [a] = do submitGuess ident a
-                         fail "oops"
 makeGuess ident (b:bs) =
   do r <- submitGuess ident b
      case r of
@@ -90,12 +87,11 @@ timeMe job start =
      getCPUTime
 
 main = do args0 <- getArgs
-          let (timeonly, enumerateonly, args) =
+          let (timeonly, args) =
                 if length args0 == 3
                 then case head args0 of
-                       "time" -> (True, False, tail args0)
-                       "enumerate" -> (True, True, tail args0)
-                else (False, False, args0)
+                       "time" -> (True, tail args0)
+                else (False, args0)
               [nstr,i] = if length args == 2 then args else ["5", "VOG68zQWPy4L1Vu8hginHq02"]
               n = read nstr
           tr <- readTrain n i
@@ -135,30 +131,8 @@ main = do args0 <- getArgs
               rndout = take (length guesses) $ randoms (mkStdGen 1)
           putStrLn $ "This involves " ++ show (length rndprograms) ++ " programs matching randoms"
           start <- timeMe "Filtering random programs" start
-          if enumerateonly then exitSuccess
-                           else return ()
-          let (_, ma) = solver_array bestsize (problemsize tr) (operators tr)
-          putStrLn $ "number elements in map " ++ show (Map.size ma)
-          putStrLn $ "number programs is " ++ show (length $ concat $ Map.elems ma)
-          putStrLn $ "number distinguished outputs is " ++ show (length $ Map.elems ma)
-          start <- timeMe "solver_array" start
-          let (g, m) = solver bestsize (problemsize tr) (operators tr)
-          putStrLn $ "minsize is " ++ show (minimum_size (operators tr))
-          putStrLn $ "problem size is " ++ show (problemsize tr)
-          putStrLn $ "number programs is " ++ show (length $ concat $ Map.elems m)
-          putStrLn $ "number distinguished outputs is " ++ show (length $ Map.elems m)
-          start <- timeMe "solver" start
           if timeonly then exitSuccess
                       else return ()
-          a <- submitEval i g
-          print a
-          putStrLn $ hexes a
-          putStrLn $ show m
-          case Map.lookup a m of
-            Nothing -> do let ps = concat $ Map.elems m
-                          putStrLn $ unlines $ map lispify ps
-                          fail "This is impossible!"
-            Just [] -> fail "coudn't happen"
-            Just ps -> do putStrLn $ "Could be one of " ++ show (length ps)
-                          putStrLn $ unlines $ map lispify ps
-                          makeGuess i ps
+          a <- submitEval i guesses
+          makeGuess i $ filter (\p -> map (eval p) guesses == a) programs
+

@@ -4,10 +4,7 @@ import Numeric ( showHex )
 import Data.Tuple ( swap )
 import Data.Word ( Word8, Word16, Word64 )
 import Data.Bits ( Bits(..) )
-import qualified Data.Map.Strict as Map
 import System.Random
-
-import Data.Array.Unboxed ( UArray, listArray, amap )
 
 import Debug.Trace
 
@@ -389,27 +386,6 @@ guesses :: [Word64]
 guesses = take 256 $ [0, 3, 5, 6, 0xffffffffffffffff] ++
           map (\x -> unsafeShiftL 1 x) [0..63] ++
           map (\x -> complement (unsafeShiftL 1 x)) [0..63] ++ randoms64
-
-betterguesses :: Int -> UArray Int Word64
-betterguesses i | i > 256 = error "too big in betterguesses"
-                | otherwise = listArray (0,i-1) guesses
-
-eval_array :: Ast -> UArray Int Word64 -> UArray Int Word64
-eval_array f = amap (eval f)
-
-solver :: Int -> Int -> OperatorSet -> ([Word64], Map.Map [Word64] [Ast])
-solver nguesses sz ops = (g, mp)
-  where mp = Map.fromListWith (++) assoc_list
-        assoc_list = map (\a -> (map (eval a) g , [a])) args
-        args = enumerate_program sz ops
-        g = take nguesses guesses
-
-solver_array :: Int -> Int -> OperatorSet -> (UArray Int Word64, Map.Map (UArray Int Word64) [Ast])
-solver_array nguesses sz ops = (g, mp)
-  where mp = Map.fromListWith (++) assoc_list
-        assoc_list = map (\a -> (amap (eval a) g , [a])) args
-        args = enumerate_program sz ops
-        g = betterguesses nguesses
 
 niceHex :: Word64 -> String
 niceHex x = "0x" ++ replicate (16 - length nonzero) '0' ++ nonzero
