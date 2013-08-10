@@ -140,39 +140,50 @@ enumerate_expression 1 musthave mayhave
   | otherwise = x10_asts
 enumerate_expression 2 musthave mayhave
   | musthave `overlapsWith` ops_binary_trinary = []
-  | musthave /= empty = [apply_unary myop e | myop <- (distinctOperators musthave),
-                         e <- (enumerate_expression 1 (musthave `difference` myop) mayhave)]
-  | otherwise = [apply_unary myop e | myop <- (distinctOperators (mayhave `intersection` ops_unary)),
-                 e <- (enumerate_expression 1 (musthave `difference` myop) mayhave)]
+  | musthave /= empty = -- musthave unary
+    [ apply_unary myop e |
+      myop <- (distinctOperators musthave),
+      e <- (enumerate_expression 1 (musthave `difference` myop) mayhave) ]
+  | otherwise =
+      [ apply_unary myop e |
+        myop <- (distinctOperators (mayhave `intersection` ops_unary)),
+        e <- (enumerate_expression 1 (musthave `difference` myop) mayhave) ]
 
 enumerate_expression 3 musthave mayhave
-  | musthave `overlapsWith` ops_trinary = []
-  | musthave `overlapsWith` ops_binary && musthave `overlapsWith` ops_unary = []
+  | minsize > 3 = []
   | musthave `overlapsWith` ops_binary =
-    case distinctOperators $ intersection musthave ops_binary of
-      [myop] -> [apply_binary myop e1 e2 |
-                 i <- [0..(length asts)-1],
-                 j <- [i..(length asts)-1],
-                 let e1 = asts!!i,
-                 let e2 = asts!!j ]
-        where asts = if (mayhave `overlapsWith` op_yz) then xyz10_asts else x10_asts
-      _ -> []
-  | length (distinctOperators (intersection musthave ops_unary)) > 1 =
-      case distinctOperators $ intersection musthave ops_unary of
-        [op1,op2] ->  apply_single_unary op1 (apply_single_unary op2 args) ++
-                     apply_single_unary op2 (apply_single_unary op1 args)
-          where args = enumerate_expression 1 (musthave `difference` (union op1 op2)) mayhave
-        _ -> []
-  | otherwise = (concatMap binary_asts binaries) ++ (concatMap unary_asts unaries)
-      where binaries = filter (overlapsWith ops_binary) $ distinctOperators mayhave
-            binary_asts myop = [apply_binary myop e1 e2 |
-                 i <- [0..(length asts)-1],
-                 j <- [i..(length asts)-1],
-                 let e1 = asts!!i,
-                 let e2 = asts!!j ]
-              where asts = if (mayhave `overlapsWith` op_yz) then xyz10_asts else x10_asts
-            unaries = filter (overlapsWith ops_unary) $ distinctOperators mayhave
-            unary_asts myop = apply_single_unary myop (enumerate_expression 2 (musthave `difference` myop) mayhave)
+    [ apply_binary myop e1 e2 |
+      myop <- distinctOperators $ intersection musthave ops_binary,
+      let asts = if (mayhave `overlapsWith` op_yz) then xyz10_asts else x10_asts,
+      let len = (length asts) - 1,
+      i <- [0..len],
+      j <- [i..len],
+      let e1 = asts!!i,
+      let e2 = asts!!j ]
+
+  | minsize == 3 = -- musthave two unaries
+    [ apply_unary myop e |
+      myop <- distinctOperators $ intersection musthave ops_unary,
+      e <- enumerate_expression 2 (musthave `difference` myop) mayhave ]
+
+  | minsize == 2 = -- musthave one unary
+    [ apply_unary myop e |
+      myop <- distinctOperators $ intersection mayhave ops_unary,
+      e <- enumerate_expression 2 (musthave `difference` myop) mayhave ]
+  | otherwise = -- musthave nothing
+      [ apply_unary myop e |
+        myop <- distinctOperators $ intersection mayhave ops_unary,
+        e <- enumerate_expression 2 (musthave `difference` myop) mayhave ] ++
+      [ apply_binary myop e1 e2 |
+        myop <- distinctOperators $ intersection mayhave ops_binary,
+        let asts = if (mayhave `overlapsWith` op_yz) then xyz10_asts else x10_asts,
+        let len = (length asts) - 1,
+        i <- [0..len],
+        j <- [i..len],
+        let e1 = asts!!i,
+        let e2 = asts!!j ]
+  where minsize = minimum_size musthave
+
 enumerate_expression n musthave mayhave
   | minimum_size musthave > n = []
   | otherwise = unary_tree ++ binary_tree ++ if_tree ++ fold_tree

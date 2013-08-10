@@ -4,6 +4,7 @@ import Data.Word ( Word64 )
 import System.Exit ( exitSuccess )
 import System.CPUTime ( getCPUTime )
 import System.Random
+import Control.Concurrent ( threadDelay )
 
 import Ast
 import Network.HTTP
@@ -13,13 +14,21 @@ import System.Environment ( getArgs )
 
 url path = "http://icfpc2013.cloudapp.net/" ++ path ++ "?auth=0175jv6XdpWdKm9pYxVcBgmSMCIlP4aVxQxZ3PqOvpsH1H"
 
+getdata :: String -> String -> IO String
 getdata path body = do if length body < 128
                          then putStrLn ("body is:\n" ++ body)
                          else putStrLn ("body length is: " ++ show (length body))
                        a <- simpleHTTP (postRequestWithBody (url path) "text/text" body)
-                       getResponseBody a
+                       response <- getResponseBody a
+                       if take (length "Too many requests") response == "Too many requests"
+                         then do putStrLn response
+                                 putStrLn "Too many requests! (trying again)"
+                                 threadDelay 5000000 -- five seconds
+                                 getdata path body
+                         else return response
 
 data Problem = Problem {
+  problemkind :: TrainOrProblem,
   problemid :: String,
   problemsize :: Int,
   operators :: OperatorSet,
@@ -27,9 +36,9 @@ data Problem = Problem {
   }
              deriving ( Show )
 
-submitEval :: String -> [Word64] -> IO [Word64]
-submitEval ident g =
-  do d <- getdata "eval" ("{\"id\":" ++ show ident ++ ",\"arguments\":" ++ hexes g ++ "}")
+submitEval :: Problem -> [Word64] -> IO [Word64]
+submitEval p g =
+  do d <- getdata "eval" ("{\"id\":" ++ show (problemid p) ++ ",\"arguments\":" ++ hexes g ++ "}")
      if length d < 128
        then putStrLn $ "Response was: " ++ d
        else putStrLn $ "Response was length " ++ show (length d)
@@ -41,9 +50,9 @@ submitEval ident g =
                               Ok strings = readJSON outs
                   return $ pars a
 
-submitGuess :: String -> Ast -> IO (Maybe (Word64, Word64, Word64))
-submitGuess ident p =
-  do d <- getdata "guess" ("{\"id\":" ++ show ident ++ ",\"program\":" ++ show (lispify p) ++ "}")
+submitGuess :: Problem -> Ast -> IO (Maybe (Word64, Word64, Word64))
+submitGuess prob p =
+  do d <- getdata "guess" ("{\"id\":" ++ show (problemid prob) ++ ",\"program\":" ++ show (lispify p) ++ "}")
      putStrLn d
      case decode d of
        Error e -> fail $ "submitGuess error " ++ e
@@ -61,48 +70,48 @@ submitGuess ident p =
                      case readJSON valstr of
                        Ok (a,b,c) -> return (Just (read a, read b, read c))
 
-newtype Dir = Dir String
-writeFileToDir :: Dir -> String -> String -> IO ()
-writeFileToDir (Dir d) f contents = writeFile (d ++ "/" ++ f) contents
+problemDir :: Problem -> String
+problemDir p = kdir ++ show (problemsize p) ++ "/" ++ problemid p ++ "/"
+  where kdir = case problemkind p of DoTrain -> "trainings/"
+                                     DoProblem -> "problems/"
 
-makeGuess :: Dir -> String -> [Ast] -> IO ()
-makeGuess _ _ [] = fail "I have no idea!"
-makeGuess dir ident (b:bs) =
-  do r <- submitGuess ident b
+makeGuess :: Problem -> [Ast] -> IO ()
+makeGuess _ [] = fail "I have no idea!"
+makeGuess prob (b:bs) =
+  do r <- submitGuess prob b
      case r of
        Nothing -> do putStrLn "We won, we won!!!"
-                     writeFileToDir dir "solved" "solved\n"
+                     writeFile (problemDir prob ++ "solved") "solved\n"
        Just (inp, out, _) ->
          do putStrLn $ "I could do better on " ++ niceHex inp
-            makeGuess dir ident (filter (\p -> eval p inp == out) bs)
+            makeGuess prob (filter (\p -> eval p inp == out) bs)
 
 data TrainOrProblem = DoTrain | DoProblem
+                    deriving ( Show, Read, Eq )
 
-readInfo :: TrainOrProblem -> Int -> String -> IO (Dir, Problem)
+readInfo :: TrainOrProblem -> Int -> String -> IO Problem
 readInfo which sz ident =
-  do let dir = case which of
-           DoTrain -> "trainings/" ++ show sz ++ "/" ++ ident
-           DoProblem -> "trainings/" ++ show sz ++ "/" ++ ident
-     let opsname = dir ++ "/operators"
-     ops <- readFile opsname
-     alreadydone <- doesFileExist (dir ++ "/solved")
-     return (Dir dir,
-             Problem {
-               problemid = ident,
-               problemsize = sz,
-               operators = toOperatorSet $ read ops,
-               solved = alreadydone })
+  do let prob = Problem {
+           problemkind = which,
+           problemid = ident,
+           problemsize = sz,
+           operators = empty,
+           solved = False }
+     ops <- readFile (problemDir prob ++ "operators")
+     alreadydone <- doesFileExist (problemDir prob ++ "solved")
+     return prob { operators = toOperatorSet $ read ops, solved = alreadydone }
 
-main = do args0 <- getArgs
-          let (todo, args) =
-                if length args0 == 3
-                then case head args0 of
-                       "time" -> ("time", tail args0)
-                       "count-programs" -> ("count-programs", tail args0)
-                else ("", args0)
-              [nstr,i] = if length args == 2 then args else ["5", "VOG68zQWPy4L1Vu8hginHq02"]
+main = do nstr:i:args <- getArgs
+          let todo = case args of
+                [] -> ""
+                _ | "time" `elem` args -> "time"
+                  | "count-programs" `elem` args -> "count-programs"
+                  | "problem" `elem` args -> ""
+              kind = if "problem" `elem` args
+                     then DoProblem
+                     else DoTrain
               n = read nstr
-          (dir, tr) <- readInfo DoTrain n i
+          tr <- readInfo kind n i
           if solved tr then putStrLn "It is already solved!" else return ()
           putStrLn $ show tr
           start <- timeMe "File IO" 0
@@ -120,10 +129,11 @@ main = do args0 <- getArgs
                     printNumber (length programs)
                     start <- timeMe "Counting programs" start
                     exitSuccess
-            _ -> return ()
-          a <- submitEval i guesses
-          let programs = enumerate_program (problemsize tr) (operators tr)
-          makeGuess dir i $ filter (\p -> map (eval p) guesses == a) programs
+            "" -> do if solved tr then fail "We already solved it."
+                                  else return ()
+                     a <- submitEval tr guesses
+                     let programs = enumerate_program (problemsize tr) (operators tr)
+                     makeGuess tr $ filter (\p -> map (eval p) guesses == a) programs
 
 
 timeMe :: String -> Integer -> IO Integer
