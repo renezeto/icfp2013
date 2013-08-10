@@ -221,6 +221,25 @@ find_ast_ops Z = op_yz
 find_ast_ops _ = empty
 
 -- lisp output
+toLisp :: Ast -> String
+toLisp Zero = "0"
+toLisp One = "1" 
+toLisp X = "x"
+toLisp Y = "y"
+toLisp Z = "z"
+toLisp (If0 e a b)  = "(if0 "++toLisp e++" "++toLisp a++" "++toLisp b++")"
+toLisp (Fold e a b) = "(fold "++toLisp e++" "++toLisp a++" "++"(lambda (y z) "++toLisp b++"))"
+
+toLisp (Not e) = "(not "++toLisp e++")"
+toLisp (Shl1 e) = "(sh11 "++toLisp e++")"
+toLisp (Shr1 e) = "(shr1 "++toLisp e++")"
+toLisp (Shr4 e) = "(shr4 "++toLisp e++")"
+toLisp (Shr16 e) = "(shr16 "++toLisp e++")"
+
+toLisp (And a b) = "(and "++toLisp a++" "++toLisp b++")"
+toLisp (Or a b) = "(or "++toLisp a++" "++toLisp b++")"
+toLisp (Xor a b) = "(xor "++toLisp a++" "++toLisp b++")"
+toLisp (Plus a b) = "(plus "++toLisp a++" "++toLisp b++")"
 
 
 -- OperatorSet code:
