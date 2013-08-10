@@ -3,6 +3,7 @@ module Main where
 import Data.Word ( Word64 )
 import qualified Data.Map as Map
 import System.Exit ( exitSuccess )
+import System.CPUTime ( getCPUTime )
 
 import Ast
 import Network.HTTP
@@ -81,6 +82,12 @@ readTrain sz ident =
        solved = alreadydone
        }
 
+timeMe :: String -> Integer -> IO Integer
+timeMe job start =
+  do stop <- getCPUTime
+     putStrLn $ job ++ " took " ++ show (fromIntegral (stop-start)/1.0e12 :: Double) ++ " seconds"
+     getCPUTime
+
 main = do args0 <- getArgs
           let (timeonly, args) = if length args0 == 3 && head args0 == "time"
                                  then (True, tail args0)
@@ -89,11 +96,18 @@ main = do args0 <- getArgs
               n = read nstr
           tr <- readTrain n i
           putStrLn $ show tr
+          start <- timeMe "File IO" 0
+          putStrLn $ "I count " ++ show (length $ enumerate_program (problemsize tr) (operators tr)) 
+            ++ " programs"
+          start <- timeMe "Generating programs" start
+          putStrLn $ "I count " ++ show (length guesses) ++ " guesses"
+          start <- timeMe "Generating guesses" start
           let (g, m) = solver (problemsize tr) (operators tr)
           putStrLn $ "minsize is " ++ show (minimum_size (operators tr))
           putStrLn $ "problem size is " ++ show (problemsize tr)
           putStrLn $ "number programs is " ++ show (length $ concat $ Map.elems m)
           putStrLn $ "number distinguished outputs is " ++ show (length $ Map.elems m)
+          timeMe "solver" start
           if timeonly then exitSuccess
                       else return ()
           a <- submitEval i g
