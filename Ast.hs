@@ -120,6 +120,9 @@ sizeInternal (Plus a b) = 1 + sizeInternal a + sizeInternal b
 size :: Ast -> Int
 size e = sizeInternal e + 1
 
+x10_asts = [X, One, Zero]
+xyz10_asts = [Z, Y, X, One, Zero]
+
 -- enumerate (requires a size and TWO OperatorSets (definitely and maybe))
 enumerate_program :: Int -> OperatorSet -> [Ast]
 enumerate_program n musthave = enumerate_expression (n-1) musthave musthave
@@ -133,17 +136,15 @@ enumerate_expression n musthave mayhave
         fold_mayhave = mayhave `difference` op_tfold `union` op_yz
 enumerate_expression 1 musthave mayhave
   | musthave /= empty = [] -- we can't have musthaves here!
-  | mayhave `overlapsWith` op_yz = [X, Y, Z, One, Zero]
-  | otherwise = [X, One, Zero]
+  | mayhave `overlapsWith` op_yz = xyz10_asts
+  | otherwise = x10_asts
 enumerate_expression 2 musthave mayhave
   | musthave `overlapsWith` ops_binary_trinary = []
-  | musthave `overlapsWith` ops_unary =
-    case distinctOperators $ intersection musthave ops_unary of
-        [myop] -> apply_single_unary myop (enumerate_expression 1 (musthave `difference` myop) mayhave)
-        _ -> []
-  | otherwise = concatMap thingsfor unaries
-      where unaries = filter (overlapsWith ops_unary) $ distinctOperators mayhave
-            thingsfor myop = apply_single_unary myop (enumerate_expression 1 (musthave `difference` myop) mayhave)
+  | musthave /= empty = [apply_unary myop e | myop <- (distinctOperators musthave),
+                         e <- (enumerate_expression 1 (musthave `difference` myop) mayhave)]
+  | otherwise = [apply_unary myop e | myop <- (distinctOperators (mayhave `intersection` ops_unary)),
+                 e <- (enumerate_expression 1 (musthave `difference` myop) mayhave)]
+
 enumerate_expression 3 musthave mayhave
   | musthave `overlapsWith` ops_trinary = []
   | musthave `overlapsWith` ops_binary && musthave `overlapsWith` ops_unary = []
@@ -154,7 +155,7 @@ enumerate_expression 3 musthave mayhave
                  j <- [i..(length asts)-1],
                  let e1 = asts!!i,
                  let e2 = asts!!j ]
-        where asts = if (mayhave `overlapsWith` op_yz) then [X, Y, Z, One, Zero] else [X, One, Zero]
+        where asts = if (mayhave `overlapsWith` op_yz) then xyz10_asts else x10_asts
       _ -> []
   | length (distinctOperators (intersection musthave ops_unary)) > 1 =
       case distinctOperators $ intersection musthave ops_unary of
@@ -169,7 +170,7 @@ enumerate_expression 3 musthave mayhave
                  j <- [i..(length asts)-1],
                  let e1 = asts!!i,
                  let e2 = asts!!j ]
-              where asts = if (mayhave `overlapsWith` op_yz) then [X, Y, Z, One, Zero] else [X, One, Zero]
+              where asts = if (mayhave `overlapsWith` op_yz) then xyz10_asts else x10_asts
             unaries = filter (overlapsWith ops_unary) $ distinctOperators mayhave
             unary_asts myop = apply_single_unary myop (enumerate_expression 2 (musthave `difference` myop) mayhave)
 enumerate_expression n musthave mayhave
@@ -319,7 +320,7 @@ op_plus = OS 1024
 op_yz = OS 2048
 op_tfold = OS 4096
 op_bonus = OS 8192
-  
+
 allops = [(op_if, "if0"),
           (op_fold, "fold"),
           (op_not, "not"),
