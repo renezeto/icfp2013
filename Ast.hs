@@ -132,9 +132,11 @@ enumerate_expression n musthave mayhave
   where
     fold_tree = [ Fold e1 e2 e3 |
                  i <- [1..(n-2-2)],
-                 j <- [1..(n-2-i-1)],
                  e1 <- enumerate_expression i empty fold_may,
                  let e1_ops = find_ast_ops e1,
+                 -- Now let us check that we can possibly satisfy the remaining constraints:
+                 True <- [minimum_size (fold_must `difference` e1_ops) <= n-2-i],
+                 j <- [1..(n-2-i-1)],
                  e2 <- enumerate_expression j empty fold_may,
                  let e2_ops = find_ast_ops e2,
                  e3 <- enumerate_expression (n-2-i-j)
