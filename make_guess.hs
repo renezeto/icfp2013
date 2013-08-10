@@ -73,7 +73,7 @@ submitGuess prob p =
 problemDir :: Problem -> String
 problemDir p = kdir ++ show (problemsize p) ++ "/" ++ problemid p ++ "/"
   where kdir = case problemkind p of DoTrain -> "trainings/"
-                                     DoProblem -> "error-for-now/"
+                                     DoProblem -> "problems/"
 
 makeGuess :: Problem -> [Ast] -> IO ()
 makeGuess _ [] = fail "I have no idea!"
@@ -105,7 +105,7 @@ main = do nstr:i:args <- getArgs
           let todo = case args of
                 [] -> ""
                 _ | "time" `elem` args -> "time"
-                  | "count-programs" `elem` args -> "time"
+                  | "count-programs" `elem` args -> "count-programs"
               kind = if "problem" `elem` args
                      then DoProblem
                      else DoTrain
