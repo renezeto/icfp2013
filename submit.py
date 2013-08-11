@@ -13,13 +13,18 @@ def main():
     if "solve" in sys.argv:
         problems_str = ""
         size = sys.argv[2]
-        probIDs = [name for name in os.listdir('trainings/%s'%(size))]
+        dirname = 'trainings/%s' % (size)
+        probIDs = [name for name in os.listdir(dirname)]
         if "problems" in sys.argv:
             problems_str = "problem"
-            probIDs = [name for name in os.listdir('problems/%s'%(size))]
+            dirname = 'problems/%s' % (size)
+            probIDs = [name for name in os.listdir(dirname)]
         for problem in probIDs:
-            os.system("./make_guess %s %s %s"%(size, problem, problems_str))
-            time.sleep(10)
+            if os.path.exists(os.path.join(dirname, problem, "solved")):
+                print "problem %s is already solved" % problem
+            else:
+                os.system("./make_guess %s %s %s"%(size, problem, problems_str))
+                time.sleep(10)
 
 if __name__ == '__main__':
     main()
