@@ -1,7 +1,6 @@
 import os
 import sys
 import time
-import numpy as np
 
 def main():
     if "get" in sys.argv:
@@ -27,7 +26,6 @@ def main():
                 os.system("./make_guess %s %s %s"%(size, problem, problems_str))
                 time.sleep(10)
 
-#        ./make_guess 3 iwxYDVp0AsouTAvEEKBgwy1E
 if __name__ == '__main__':
     main()
         
