@@ -1,5 +1,4 @@
 import os
-import sys
 import time
 
 def main():
@@ -13,16 +12,20 @@ def main():
     if "solve" in sys.argv:
         problems_str = ""
         size = sys.argv[2]
-        probIDs = [name for name in os.listdir('trainings/%s'%(size))]
         if "problems" in sys.argv:
             problems_str = "problem"
             probIDs = [name for name in os.listdir('problems/%s'%(size))]
+        else:
+            problems_str = ""
+            probIDs = [name for name in os.listdir('trainings/%s'%(size))]
         for problem in probIDs:
+            init = time.time()
             os.system("./make_guess %s %s %s"%(size, problem, problems_str))
-            time.sleep(10)
+            final = time.time()
+            dt = final - init
+            if dt > 240:
+                with open("trainings/%s/%s/slow","w") as notefile:
+                    pass
 
 if __name__ == '__main__':
     main()
-        
-
-
