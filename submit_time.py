@@ -30,6 +30,7 @@ def main():
                 if (currentProcess.poll() == 0):
                     with open("%s/%s/fast"%(dirname,problem),"w") as notefile:
                         pass
+                time.sleep(1)
             try:
                 currentProcess.kill()
                 print "==== process did not finish =====+++++++++++++++"
